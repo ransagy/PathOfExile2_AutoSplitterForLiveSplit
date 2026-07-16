@@ -176,6 +176,14 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             IsMandatory = true
         };
         
+        public static readonly CampaignAreaDto TheHalaniGatesBlocked = new CampaignAreaDto
+        {
+            AreaId = "G2_3a",
+            AreaName = "The Halani Gates (blocked)",
+            IconType = EnIconType.Waypoint,
+            IsMandatory = true
+        };
+        
         public static readonly CampaignAreaDto TheHalaniGates = new CampaignAreaDto
         {
             AreaId = "G2_3",
@@ -284,16 +292,8 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
         
         public static readonly CampaignAreaDto TheDreadnought = new CampaignAreaDto
         {
-            AreaId = "G2_12_1",
-            AreaName = "The Dreadnought",
-            IconType = EnIconType.Waypoint,
-            IsMandatory = true
-        };
-        
-        public static readonly CampaignAreaDto DreadnoughtVanguard = new CampaignAreaDto
-        {
-            AreaId = "G2_12_2",
-            AreaName = "Dreadnought Vanguard",
+            AreaId = "G2_12",
+            AreaName = "Dreadnought",
             IconType = EnIconType.Waypoint,
             IsMandatory = true
         };
@@ -303,7 +303,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "G2_13",
             AreaName = "Trial of the Sekhemas",
             IconType = EnIconType.InteriorWaypoint,
-            IsMandatory = true
+            IsMandatory = false
         };
         #endregion
         
@@ -449,7 +449,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "G3_10_Airlock",
             AreaName = "The Temple of Chaos",
             IconType = EnIconType.InteriorWaypoint,
-            IsMandatory = true
+            IsMandatory = false
         };
         
         #endregion
@@ -468,7 +468,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "G4_1_1",
             AreaName = "Isle of Kin",
             IconType = EnIconType.Waypoint,
-            IsMandatory = false
+            IsMandatory = true
         };
         
         public static readonly CampaignAreaDto VolcanicWarrens = new CampaignAreaDto
@@ -476,7 +476,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "G4_1_2",
             AreaName = "Volcanic Warrens",
             IconType = EnIconType.Waypoint,
-            IsMandatory = false
+            IsMandatory = true
         };
         
         public static readonly CampaignAreaDto EyeOfHinekora = new CampaignAreaDto
@@ -540,7 +540,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "G4_3_1",
             AreaName = "Whakapanu Island",
             IconType = EnIconType.Waypoint,
-            IsMandatory = true
+            IsMandatory = false
         };
         
         public static readonly CampaignAreaDto SingingCaverns = new CampaignAreaDto
@@ -548,7 +548,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "G4_3_2",
             AreaName = "Singing Caverns",
             IconType = EnIconType.Waypoint,
-            IsMandatory = true
+            IsMandatory = false
         };
         
         public static readonly CampaignAreaDto ShrikeIsland = new CampaignAreaDto
@@ -680,7 +680,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "P2_2",
             AreaName = "Pools of Khatal",
             IconType = EnIconType.Waypoint,
-            IsMandatory = false
+            IsMandatory = true
         };
         
         public static readonly CampaignAreaDto SelKhariSanctuary = new CampaignAreaDto
@@ -688,7 +688,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Constants
             AreaId = "P2_3",
             AreaName = "Sel Khari Sanctuary",
             IconType = EnIconType.Waypoint,
-            IsMandatory = false
+            IsMandatory = true
         };
         
         public static readonly CampaignAreaDto TheGalaiGates = new CampaignAreaDto

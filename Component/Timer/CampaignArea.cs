@@ -46,6 +46,7 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Timer
             // Act 2 Areas
             AddCampaignArea(CampaignAreas.VastiriOutskirts);
             AddCampaignArea(CampaignAreas.TheArduraCaravan);
+            AddCampaignArea(CampaignAreas.TheHalaniGatesBlocked);
             AddCampaignArea(CampaignAreas.MawdunQuarry);
             AddCampaignArea(CampaignAreas.MawdunMine);
             AddCampaignArea(CampaignAreas.TraitorsPassage);
@@ -68,7 +69,6 @@ namespace LiveSplit.PathOfExile2AutoSplitter.Component.Timer
             AddCampaignArea(CampaignAreas.TheSpiresOfDeshar);
             AddCampaignArea(CampaignAreas.TrialOfTheSekhemas);
             AddCampaignArea(CampaignAreas.TheDreadnought);
-            AddCampaignArea(CampaignAreas.DreadnoughtVanguard);
             
             // Act 3 Areas
             AddCampaignArea(CampaignAreas.SandsweptMarsh);

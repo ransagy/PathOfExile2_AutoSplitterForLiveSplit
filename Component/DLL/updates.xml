@@ -8,4 +8,17 @@
             <change>Fixed an issue where AutoStart was preventing AutoSplit.</change>
         </changelog>
     </update>
+    <update version="1.0.2">
+        <files>
+            <file path="LiveSplit.PathOfExile2AutoSplitter.dll" status="changed" />
+            <file path="CampaignAreas.cs" status="changed" />
+            <file path="AutoSplitter.cs" status="changed" />
+            <file path="CampaignArea.cs" status="changed" />
+        </files>
+        <changelog>
+            <change>Update zone information for PoE2 Patch 0.5</change>
+            <change>Prevent tracker crashing on invalid zone</change>
+            <change>Add additional zone for Halani Gates (blocked) at start of Act 2</change>
+        </changelog>
+    </update>
 </updates>
