@@ -77,6 +77,7 @@ regenerated from upstream sources by [`splits/generate.py`](../splits/generate.p
 | Split mode | `Campaign (100%)`, `Campaign (Any%)`, `Level`, or `Custom (from splits file)` |
 | Enable auto splitting | master switch for start/split behaviour |
 | Auto start new character runs | start automatically when entering The Riverbank |
+| Verbose debug logging | per-tick trace lines in `log.txt` (off = quiet; meaningful events always log) |
 
 Pick the split mode that matches your splits file:
 
@@ -86,8 +87,24 @@ Pick the split mode that matches your splits file:
   splits file you picked under *Splits file* — build any hybrid you like
   (drop optionals, add them back, one label per act boss: non-area labels are
   simply passed over without consuming a segment). Edit the file whenever you
-  want; the splitter notices changes on its own. Keep `The Ziggurat Refuge`
-  as the final segment so the run ends there.
+  want; the splitter notices changes on its own. The run ends when you enter
+  the **last segment** of the file, so put your finish-line zone there.
+
+#### How triggering works
+
+- A split fires on the **first entry** of each tracked area per attempt.
+  Everything else — checkpoint resets, deaths, instance recreations,
+  waypoint/backtrack revisits, pause/resume — is silent and never consumes a
+  segment. Mid-run game restarts are survived cleanly.
+- Each zone entry completes the **previous** unconsumed row. So for accurate
+  labels, keep Custom-mode segment order identical to your planned
+  first-entry order. Freeform label rows (e.g. `Act 1 Boss`) are passed over
+  without consuming anything.
+- Entering the finish line fires a double-split: the previous row *and* the
+  finish row get stamped at the same instant — seeing the last two segments
+  with identical times is expected.
+- The Riverbank (run start) never consumes a segment, whether you use auto
+  start or start manually.
 
 4. **Save your splits once** (Splits → Save). The auto splitter's settings are
    stored inside the `.lss`, so this makes them permanent. They are restored
@@ -177,8 +194,11 @@ Known quirks:
 - Saving splits through the timer rewrites the file in its own compact style
   and currently drops segment icons (cosmetic; re-run
   `python3 splits/generate.py` to get pristine templates back).
-- Cemetery of the Eternals timing is approximate (Lachlann revisit quirk,
-  inherited from upstream).
+- The final two segments of a finished run share an identical time (the
+  finish-line double-split stamps both at the same zone load) - expected.
+- Cemetery of the Eternals timing is approximate in the stock campaign files
+  (Lachlann revisit quirk, inherited from upstream). In Custom mode you can
+  collapse the whole cemetery questline into a single segment instead.
 - No load-time removal yet (upstream TODO as well).
 
 ## Building from source
