@@ -34,18 +34,24 @@ asr::async_main!(stable);
 // Campaign data (ported from Component/Constants/CampaignAreas.cs)
 // ---------------------------------------------------------------------------
 
-const START_AREA: &str = "The Riverbank";
-const END_AREA: &str = "The Ziggurat Refuge";
+const START_AREA_ID: &str = "G1_1";
+const END_AREA_ID: &str = "G_Endgame_Town";
 
 struct Area {
+    /// Area ID as emitted by the game's log (`Generating level N area "<id>"`).
+    ///
+    /// Note: the log carries IDs, not display names - same as the original C#
+    /// component, which looks areas up by AreaId.
+    id: &'static str,
+    /// Display name (matches segment names in the shipped split files).
     name: &'static str,
     /// Whether the area is part of the mandatory (Any%) route.
     mandatory: bool,
 }
 
 macro_rules! areas {
-    ($($name:literal, $mandatory:literal);* $(;)?) => {
-        &[ $( Area { name: $name, mandatory: $mandatory } ),* ]
+    ($($id:literal, $name:literal, $mandatory:literal);* $(;)?) => {
+        &[ $( Area { id: $id, name: $name, mandatory: $mandatory } ),* ]
     };
 }
 
@@ -54,109 +60,109 @@ macro_rules! areas {
 /// component).
 static AREAS: &[Area] = areas! {
     // Act 1
-    "The Riverbank", true;
-    "Clearfell Encampment", true;
-    "Clearfell", true;
-    "Mud Burrow", false;
-    "The Grelwood", true;
-    "The Red Vale", true;
-    "The Grim Tangle", true;
-    "Cemetery of the Eternals", true;
-    "Mausoleum of the Praetor", true;
-    "Tomb of the Consort", true;
-    "Hunting Grounds", true;
-    "Freythorn", false;
-    "Ogham Farmlands", true;
-    "Ogham Village", true;
-    "The Manor Ramparts", true;
-    "Ogham Manor", true;
+    "G1_1", "The Riverbank", true;
+    "G1_town", "Clearfell Encampment", true;
+    "G1_2", "Clearfell", true;
+    "G1_3", "Mud Burrow", false;
+    "G1_4", "The Grelwood", true;
+    "G1_5", "The Red Vale", true;
+    "G1_6", "The Grim Tangle", true;
+    "G1_7", "Cemetery of the Eternals", true;
+    "G1_8", "Mausoleum of the Praetor", true;
+    "G1_9", "Tomb of the Consort", true;
+    "G1_11", "Hunting Grounds", true;
+    "G1_12", "Freythorn", false;
+    "G1_13_1", "Ogham Farmlands", true;
+    "G1_13_2", "Ogham Village", true;
+    "G1_14", "The Manor Ramparts", true;
+    "G1_15", "Ogham Manor", true;
     // Act 2
-    "Vastiri Outskirts", true;
-    "The Ardura Caravan", true;
-    "Mawdun Quarry", true;
-    "Mawdun Mine", true;
-    "Traitor's Passage", true;
-    "The Halani Gates (blocked)", true;
-    "The Halani Gates", true;
-    "Keth", true;
-    "The Lost City", true;
-    "Buried Shrines", true;
-    "Mastodon Badlands", true;
-    "Lightless Passage", false;
-    "The Well of Souls", false;
-    "The Bone Pits", true;
-    "Valley of the Titans", true;
-    "The Titan Grotto", true;
-    "Deshar", true;
-    "Path of Mourning", true;
-    "The Spires of Deshar", true;
-    "Dreadnought", true;
-    "Trial of the Sekhemas", false;
+    "G2_1", "Vastiri Outskirts", true;
+    "G2_town", "The Ardura Caravan", true;
+    "G2_10_1", "Mawdun Quarry", true;
+    "G2_10_2", "Mawdun Mine", true;
+    "G2_2", "Traitor's Passage", true;
+    "G2_3a", "The Halani Gates (blocked)", true;
+    "G2_3", "The Halani Gates", true;
+    "G2_4_1", "Keth", true;
+    "G2_4_2", "The Lost City", true;
+    "G2_4_3", "Buried Shrines", true;
+    "G2_5_1", "Mastodon Badlands", true;
+    "Abyss_Intro", "Lightless Passage", false;
+    "Abyss_Hub", "The Well of Souls", false;
+    "G2_5_2", "The Bone Pits", true;
+    "G2_6", "Valley of the Titans", true;
+    "G2_7", "The Titan Grotto", true;
+    "G2_8", "Deshar", true;
+    "G2_9_1", "Path of Mourning", true;
+    "G2_9_2", "The Spires of Deshar", true;
+    "G2_12", "Dreadnought", true;
+    "G2_13", "Trial of the Sekhemas", false;
     // Act 3
-    "Sandswept Marsh", true;
-    "Ziggurat Encampment", true;
-    "Jungle Ruins", true;
-    "The Venom Crypts", false;
-    "Infested Barrens", true;
-    "The Azak Bog", false;
-    "Chimeral Wetlands", true;
-    "Jiquani's Machinarium", true;
-    "Jiquani's Sanctum", true;
-    "The Matlan Waterways", true;
-    "The Drowned City", true;
-    "The Molten Vault", false;
-    "Apex of Filth", true;
-    "Temple of Kopec", true;
-    "Utzaal", true;
-    "Aggorat", true;
-    "The Black Chambers", true;
-    "The Temple of Chaos", false;
+    "G3_1", "Sandswept Marsh", true;
+    "G3_town", "Ziggurat Encampment", true;
+    "G3_3", "Jungle Ruins", true;
+    "G3_4", "The Venom Crypts", false;
+    "G3_2_1", "Infested Barrens", true;
+    "G3_7", "The Azak Bog", false;
+    "G3_5", "Chimeral Wetlands", true;
+    "G3_6_1", "Jiquani's Machinarium", true;
+    "G3_6_2", "Jiquani's Sanctum", true;
+    "G3_2_2", "The Matlan Waterways", true;
+    "G3_8", "The Drowned City", true;
+    "G3_9", "The Molten Vault", false;
+    "G3_11", "Apex of Filth", true;
+    "G3_12", "Temple of Kopec", true;
+    "G3_14", "Utzaal", true;
+    "G3_16", "Aggorat", true;
+    "G3_17", "The Black Chambers", true;
+    "G3_10_Airlock", "The Temple of Chaos", false;
     // Act 4
-    "Kingsmarch", true;
-    "Isle of Kin", true;
-    "Volcanic Warrens", true;
-    "Eye of Hinekora", false;
-    "Halls of the Dead", false;
-    "Trial of the Ancestors", false;
-    "Kedge Bay", false;
-    "Journey's End", false;
-    "Abandoned Prison", true;
-    "Solitary Confinement", true;
-    "Whakapanu Island", false;
-    "Singing Caverns", false;
-    "Shrike Island", true;
-    "Arastas", true;
-    "The Excavation", true;
-    "Ngakanu", true;
-    "Heart of the Tribe", true;
-    "Plunder's Point", false;
+    "G4_town", "Kingsmarch", true;
+    "G4_1_1", "Isle of Kin", true;
+    "G4_1_2", "Volcanic Warrens", true;
+    "G4_4_1", "Eye of Hinekora", false;
+    "G4_4_2", "Halls of the Dead", false;
+    "G4_4_3", "Trial of the Ancestors", false;
+    "G4_2_1", "Kedge Bay", false;
+    "G4_2_2", "Journey's End", false;
+    "G4_5_1", "Abandoned Prison", true;
+    "G4_5_2", "Solitary Confinement", true;
+    "G4_3_1", "Whakapanu Island", false;
+    "G4_3_2", "Singing Caverns", false;
+    "G4_7", "Shrike Island", true;
+    "G4_8b", "Arastas", true;
+    "G4_10", "The Excavation", true;
+    "G4_11_1b", "Ngakanu", true;
+    "G4_11_2", "Heart of the Tribe", true;
+    "G4_13", "Plunder's Point", false;
     // Interlude 1
-    "The Refuge", true;
-    "Scorched Farmlands", true;
-    "Stones of Serle", true;
-    "The Blackwood", true;
-    "Holten", true;
-    "Wolvenhold", true;
-    "Holten Estate", true;
+    "P1_Town", "The Refuge", true;
+    "P1_1", "Scorched Farmlands", true;
+    "P1_2", "Stones of Serle", true;
+    "P1_3", "The Blackwood", true;
+    "P1_4", "Holten", true;
+    "P1_5", "Wolvenhold", true;
+    "P1_6", "Holten Estate", true;
     // Interlude 2
-    "The Khari Bazaar", true;
-    "The Khari Crossing", true;
-    "Pools of Khatal", true;
-    "Sel Khari Sanctuary", true;
-    "The Galai Gates", true;
-    "Qimah", true;
-    "Qimah Reservoir", true;
+    "P2_Town", "The Khari Bazaar", true;
+    "P2_1", "The Khari Crossing", true;
+    "P2_2", "Pools of Khatal", true;
+    "P2_3", "Sel Khari Sanctuary", true;
+    "P2_5", "The Galai Gates", true;
+    "P2_6", "Qimah", true;
+    "P2_7", "Qimah Reservoir", true;
     // Interlude 3
-    "The Glade", true;
-    "Ashen Forest", true;
-    "Kriar Village", true;
-    "Glacial Tarn", true;
-    "Howling Caves", false;
-    "Kriar Peaks", true;
-    "Etched Ravine", true;
-    "The Cuachic Vault", true;
+    "P3_Town", "The Glade", true;
+    "P3_1", "Ashen Forest", true;
+    "P3_2", "Kriar Village", true;
+    "P3_3", "Glacial Tarn", true;
+    "P3_4", "Howling Caves", false;
+    "P3_5", "Kriar Peaks", true;
+    "P3_6", "Etched Ravine", true;
+    "P3_7", "The Cuachic Vault", true;
     // Endgame
-    "The Ziggurat Refuge", true;
+    "G_Endgame_Town", "The Ziggurat Refuge", true;
 };
 
 // ---------------------------------------------------------------------------
@@ -205,6 +211,7 @@ struct Settings {
 struct LogTail {
     path: String,
     reader: Option<BufReader<File>>,
+    open_failure_reported: bool,
 }
 
 impl LogTail {
@@ -212,6 +219,7 @@ impl LogTail {
         Self {
             path: String::new(),
             reader: None,
+            open_failure_reported: false,
         }
     }
 
@@ -236,10 +244,16 @@ impl LogTail {
             Ok(mut file) => {
                 let _ = file.seek(SeekFrom::End(0));
                 asr::print_message("Watching Client.txt");
+                self.open_failure_reported = false;
                 self.reader = Some(BufReader::new(file));
             }
-            Err(_) => {
-                // File not there (yet). Keep retrying on subsequent ticks.
+            Err(err) => {
+                // Report failures once instead of spamming the log on every
+                // retry tick.
+                if !self.open_failure_reported {
+                    self.open_failure_reported = true;
+                    asr::print_message(&format!("Client.txt open failed: {err}"));
+                }
             }
         }
     }
@@ -295,7 +309,8 @@ impl LogTail {
 // ---------------------------------------------------------------------------
 
 enum Event<'a> {
-    /// `... Generating level N area "<name>"` - the player entered an area.
+    /// `... Generating level N area "<id>"` - the player entered an area.
+    /// The captured token is the **area ID** (e.g. `G1_town`), not the name.
     Area(&'a str),
     /// `... Got Instance Details` - instance handshake (load start).
     InstanceDetails,
@@ -308,8 +323,8 @@ fn parse_line(line: &str) -> Event<'_> {
     // Timestamp prefix (`^[^ ]+ [^ ]+ (\d+)`) doesn't need to be parsed here:
     // events are consumed strictly in order, exactly like the C# parser.
 
-    if let Some(name) = extract_area_name(line) {
-        return Event::Area(name);
+    if let Some(id) = extract_area_id(line) {
+        return Event::Area(id);
     }
 
     if line.contains("Got Instance Details") {
@@ -324,13 +339,14 @@ fn parse_line(line: &str) -> Event<'_> {
 }
 
 /// Matches `.*Generating level \d+ area "(.+)"` without pulling in a regex
-/// engine. The capture is everything between the quotes.
-fn extract_area_name(line: &str) -> Option<&str> {
+/// engine. The capture is the area ID between the quotes (e.g. `G1_town`),
+/// exactly what the original C# component feeds into its AreaId lookup.
+fn extract_area_id(line: &str) -> Option<&str> {
     let idx = line.find("Generating level ")?;
     let rest = &line[idx..];
 
-    // `Generating level <N> area "<name>"` - the name spans from the first to
-    // the last quote of the remainder.
+    // `Generating level <N> area "<id>" with seed <...>` - the ID spans from
+    // the first to the last quote of the remainder.
     let start = rest.find('"')? + 1;
     let end = rest.rfind('"')?;
     if end <= start {
@@ -401,32 +417,38 @@ async fn main() {
         }
         prev_timer_state = current_timer_state;
 
-        for line in lines {
+        for line in &lines {
             handle_line(line, &settings, &mut state);
+        }
+        if !lines.is_empty() {
+            asr::print_message(&format!("[dbg] +{} new log lines", lines.len()));
         }
 
         next_tick().await;
     }
 }
 
-fn handle_line(line: String, settings: &Settings, state: &mut RunState) {
+fn handle_line(line: &str, settings: &Settings, state: &mut RunState) {
     if !settings.auto_split {
         return;
     }
 
-    match parse_line(&line) {
-        Event::Area(area_name) => {
-            // Unknown areas are ignored entirely.
-            let Some(area) = AREAS.iter().find(|a| a.name == area_name) else {
+    match parse_line(line) {
+        Event::Area(area_id) => {
+            // Unknown IDs are ignored (with a debug trace so mismatches are
+            // visible in log.txt instead of being silent).
+            let Some(area) = AREAS.iter().find(|a| a.id == area_id) else {
+                asr::print_message(&format!("[dbg] unknown area id: {area_id} ({line})"));
                 return;
             };
 
             // Automatically start the timer when entering The Riverbank.
-            if area_name == START_AREA && settings.auto_start {
+            if area_id == START_AREA_ID && settings.auto_start {
                 if timer::state() == TimerState::NotRunning {
                     timer::start();
+                    asr::print_message("[dbg] start (The Riverbank)");
                 }
-                state.encountered_areas.insert(area_name.to_string());
+                state.encountered_areas.insert(area_id.to_string());
                 return;
             }
 
@@ -438,21 +460,23 @@ fn handle_line(line: String, settings: &Settings, state: &mut RunState) {
                 SplitMode::Level => false,
             };
 
-            if in_active_set && !state.encountered_areas.contains(area_name) {
+            if in_active_set && !state.encountered_areas.contains(area_id) {
                 timer::split();
+                asr::print_message(&format!("[dbg] split: {}", area.name));
             }
 
-            if area_name == END_AREA {
+            if area_id == END_AREA_ID {
                 // Additional Split() call to end the run, same as the original
                 // component.
                 timer::split();
+                asr::print_message("[dbg] split (end of run)");
             }
 
-            state.encountered_areas.insert(area_name.to_string());
+            state.encountered_areas.insert(area_id.to_string());
         }
         Event::Level(level) => {
-            if settings.split_mode == SplitMode::Level
-                && !state.levels_reached.contains(&level)
+            asr::print_message(&format!("[dbg] level {level}"));
+            if settings.split_mode == SplitMode::Level && !state.levels_reached.contains(&level)
             {
                 timer::split();
             }
