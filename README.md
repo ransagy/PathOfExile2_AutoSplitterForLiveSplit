@@ -1,5 +1,10 @@
 ﻿# Path of Exile 2 AutoSplitter for LiveSplit
 
+> [!TIP]
+> **Linux / macOS / LiveSplit One users:** a cross-platform WASM port of this
+> auto splitter (with prebuilt binaries and ready-made split files) is
+> available in [`wasm/`](./wasm/README.md).
+
 <img width="434" height="411" alt="image" src="https://github.com/user-attachments/assets/3b6b2b1a-cea5-4957-a9b0-410048026363" />
 
 <img width="495" height="663" alt="image" src="https://github.com/user-attachments/assets/b6560423-8c31-4ef3-bbbd-0cf32572e164" />

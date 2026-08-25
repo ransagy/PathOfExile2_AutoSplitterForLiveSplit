@@ -6,6 +6,20 @@ splitting runtime — i.e. **LiveSplit One**, **livesplit-one-druid**, and OBS's
 obs-livesplit-one plugin. Works on Windows, macOS and **Linux**
 (including Proton/Wine setups).
 
+## Quick Start
+
+1. Download the prebuilt auto splitter:
+   [`wasm/poe2_autosplitter.wasm`](./poe2_autosplitter.wasm)
+   (committed alongside these sources, mirroring how the original component
+   ships its DLL in `Component/DLL/`).
+2. Grab a splits file from [`splits/`](../splits/) — e.g.
+   `Campaign-AnyPercent.lss`.
+3. In your timer: **Open Splits** → pick that `.lss`, then right-click →
+   **Open Auto Splitter…** → pick `poe2_autosplitter.wasm`.
+4. Right-click → **Edit Auto Splitter Settings** → point it at PoE2's
+   `Client.txt` and pick your split mode. Save your splits once so the path is
+   remembered.
+
 This is a Rust/WASM port of the C# LiveSplit component
 [`LiveSplit.PathOfExile2AutoSplitter`](../../) by
 [SavageOranges](https://github.com/SavageOranges) (MIT licensed, see the
@@ -36,6 +50,10 @@ Settings are exposed through the timer's Auto Splitter Settings dialog:
 | Auto start new character runs | Start automatically at The Riverbank |
 
 ## Building
+
+The committed `poe2_autosplitter.wasm` is refreshed manually whenever the
+source changes (same approach as upstream committing its built DLL). To build
+it yourself:
 
 ```sh
 rustup target add wasm32-wasip1
