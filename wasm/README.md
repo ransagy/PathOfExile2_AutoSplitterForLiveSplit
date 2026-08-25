@@ -45,12 +45,25 @@ cargo build --release --target wasm32-wasip1
 
 ## Usage (livesplit-one-druid)
 
-1. Open your `.lss` splits file. Segments are consumed in order, so put them
-   in your planned route order.
+Ready-made split files mirroring the original component's "Generate" output
+(same area order, same icons) live in [`splits/`](../splits/):
+
+- `Campaign-100.lss` — all campaign areas (96 segments)
+- `Campaign-AnyPercent.lss` — mandatory areas only (78 segments)
+- `Levels-2-100.lss` — one segment per level, 2–100
+
+1. **Open Splits** → pick one of the files above.
 2. Right-click → **Open Auto Splitter…** → select the built `.wasm`.
 3. Right-click → **Edit Auto Splitter Settings** → point it at `Client.txt`
-   and pick your options.
-4. CLI shortcut: `livesplit-one splits.lss -a poe2_autosplitter.wasm`
+   and set the matching split mode.
+4. CLI shortcut:
+   `livesplit-one splits/Campaign-AnyPercent.lss -a wasm/target/wasm32-wasip1/release/poe2_autosplitter.wasm`
+
+To regenerate the split files after syncing upstream changes:
+
+```sh
+python3 splits/generate.py
+```
 
 ### Where Client.txt lives
 
