@@ -230,15 +230,16 @@ impl LogTail {
     }
 
     /// Points the tailer at `path`. Returns `true` when this resulted in a
-    /// different file being watched than before.
+    /// different file being watched than before. Empty paths are ignored so a
+    /// transient settings read can never reset run state.
     fn sync_path(&mut self, path: &str) -> bool {
-        if path == self.path {
+        if path.is_empty() || path == self.path {
             return false;
         }
         self.path.clear();
         self.path.push_str(path);
         self.reader = None;
-        !self.path.is_empty()
+        true
     }
 
     /// Opens the file (once) and seeks to its end, like the original reader.
@@ -416,18 +417,18 @@ impl SplitsTriggers {
     }
 
     /// Refreshes the trigger set if needed. Returns `true` when a new file
-    /// was selected (so run state can be cleared).
+    /// was selected (so run state can be cleared). Empty paths are ignored so
+    /// a transient settings read can never reset run state.
     fn update(&mut self, path: &str) -> bool {
-        if path != self.path {
-            self.path.clear();
-            self.path.push_str(path);
-            self.signature = None;
-            self.ids.clear();
-            return !self.path.is_empty();
-        }
-        if self.path.is_empty() {
+        if path.is_empty() || path == self.path {
             return false;
         }
+        self.path.clear();
+        self.path.push_str(path);
+        self.signature = None;
+        self.ids.clear();
+        true
+    }
 
         // Cheap change detection via metadata instead of re-reading each tick.
         let sig = File::open(&self.path).ok().and_then(|f| {
@@ -547,16 +548,23 @@ async fn main() {
 
         // Mirror the original component's OnStart handler: clear progress when
         // a run truly starts or is reset. Pause/resume must NOT count - it
-        // used to wipe encountered-areas on every resume.
+        // used to wipe encountered-areas on every resume. Unknown reports are
+        // ignored entirely (no transition evaluated, prev unchanged).
         let current_timer_state = timer::state();
-        let fresh_start = current_timer_state == TimerState::Running
-            && (prev_timer_state == TimerState::NotRunning || prev_timer_state == TimerState::Ended);
-        let fresh_reset = current_timer_state == TimerState::NotRunning
-            && prev_timer_state != TimerState::NotRunning;
-        if fresh_start || fresh_reset {
-            state.clear();
+        if current_timer_state != TimerState::Unknown {
+            let fresh_start = current_timer_state == TimerState::Running
+                && (prev_timer_state == TimerState::NotRunning
+                    || prev_timer_state == TimerState::Ended);
+            let fresh_reset = current_timer_state == TimerState::NotRunning
+                && prev_timer_state != TimerState::NotRunning;
+            if fresh_start || fresh_reset {
+                asr::print_message(&format!(
+                    "[dbg] run state cleared ({current_timer_state:?} after {prev_timer_state:?})"
+                ));
+                state.clear();
+            }
+            prev_timer_state = current_timer_state;
         }
-        prev_timer_state = current_timer_state;
 
         for line in &lines {
             handle_line(line, &settings, &triggers.ids, &mut state);
