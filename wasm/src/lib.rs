@@ -204,6 +204,10 @@ struct Settings {
     /// Auto start new character runs when entering The Riverbank
     #[default = false]
     auto_start: bool,
+
+    /// Verbose debug logging (per-tick line batches, level-ups)
+    #[default = false]
+    debug_log: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -576,7 +580,7 @@ async fn main() {
         for line in &lines {
             handle_line(line, &settings, &triggers, &mut state);
         }
-        if !lines.is_empty() {
+        if !lines.is_empty() && settings.debug_log {
             asr::print_message(&format!("[dbg] +{} new log lines", lines.len()));
         }
 
@@ -648,7 +652,9 @@ fn handle_line(
             state.encountered_areas.insert(area_id.to_string());
         }
         Event::Level(level) => {
-            asr::print_message(&format!("[dbg] level {level}"));
+            if settings.debug_log {
+                asr::print_message(&format!("[dbg] level {level}"));
+            }
             if settings.split_mode == SplitMode::Level && !state.levels_reached.contains(&level)
             {
                 timer::split();
