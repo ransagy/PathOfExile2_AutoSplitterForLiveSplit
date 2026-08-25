@@ -6,10 +6,17 @@ splitting runtime — i.e. **LiveSplit One**, **livesplit-one-druid**, and OBS's
 obs-livesplit-one plugin. Works on Windows, macOS and **Linux**
 (including Proton/Wine setups).
 
+This is a Rust/WASM port of the C# LiveSplit component
+[`LiveSplit.PathOfExile2AutoSplitter`](../../) by
+[SavageOranges](https://github.com/SavageOranges) (MIT licensed, see the
+repository root [`LICENSE`](../LICENSE)). Instead of being a Windows-only .NET
+component, it tails the game's `Client.txt` just like the original, but runs
+inside the cross-platform WASM auto splitting runtime.
+
 ## Quick Start
 
 1. Download the prebuilt auto splitter:
-   [`wasm/poe2_autosplitter.wasm`](./poe2_autosplitter.wasm)
+   [`poe2_autosplitter.wasm`](./poe2_autosplitter.wasm)
    (committed alongside these sources, mirroring how the original component
    ships its DLL in `Component/DLL/`).
 2. Grab a splits file from [`splits/`](../splits/) — e.g.
@@ -20,90 +27,121 @@ obs-livesplit-one plugin. Works on Windows, macOS and **Linux**
    `Client.txt` and pick your split mode. Save your splits once so the path is
    remembered.
 
-This is a Rust/WASM port of the C# LiveSplit component
-[`LiveSplit.PathOfExile2AutoSplitter`](../../) by
-[SavageOranges](https://github.com/SavageOranges) (MIT licensed, see the
-repository root [`LICENSE`](../LICENSE)). Instead of being a Windows-only .NET
-component, it tails the game's `Client.txt` just like the original, but runs
-inside the cross-platform WASM auto splitting runtime.
+Detailed walkthrough below.
 
-## Features
+---
 
-Same split modes as the original component:
+## Setup Guide
 
-- **Campaign (100%)** — splits on first entry of every tracked campaign area.
-- **Campaign (Any%)** — splits on first entry of mandatory areas only
-  (including Ascendancy trials).
-- **Level** — splits on every newly reached level.
-- **Auto start** — starts the timer when entering The Riverbank on a fresh
-  character.
-- Entering **The Ziggurat Refuge** fires an additional split to end the run,
-  mirroring the original component's behaviour.
+### 0. Get a suitable timer app
 
-Settings are exposed through the timer's Auto Splitter Settings dialog:
+On Linux, use a recent build of
+[livesplit-one-druid](https://github.com/AlexKnauth/livesplit-one-druid/releases)
+(**0.8 or newer recommended** — older builds lack the settings UI and the TCP
+server used for hotkeys). The AUR package `livesplit-one-druid-bin` has been
+stale before; downloading the upstream release tarball into `~/.local/bin` is
+the safest route:
 
-| Setting | Description |
+```sh
+tar xzf livesplit-one-<version>-x86_64_v3-unknown-linux-gnu.tar.gz
+mv LiveSplitOne ~/.local/bin/livesplit-one
+```
+
+### 1. Get the splitter and split files
+
+- Auto splitter: [`poe2_autosplitter.wasm`](./poe2_autosplitter.wasm)
+- Splits: pick one from [`splits/`](../splits/)
+
+| File | Contents |
 |---|---|
-| Client.txt | Path to PoE2's `Client.txt` log file |
-| Split mode | Campaign (100%) / Campaign (Any%) / Level |
-| Enable auto splitting | Master switch for start/split behaviour |
-| Auto start new character runs | Start automatically at The Riverbank |
+| `Campaign-100.lss` | all campaign areas (96 segments) |
+| `Campaign-AnyPercent.lss` | mandatory areas only (78 segments) |
+| `Levels-2-100.lss` | one segment per level, 2–100 |
 
-## Building
+Keep your *active* splits copy somewhere outside any git repository (e.g.
+`~/livesplit/`) so the timer saving over them never mixes your personal data
+(attempt history, log-file path) with the shipped templates. The templates are
+regenerated from upstream sources by [`splits/generate.py`](../splits/generate.py).
 
-The committed `poe2_autosplitter.wasm` is refreshed manually whenever the
-source changes (same approach as upstream committing its built DLL). To build
-it yourself:
+### 2. Load everything
 
-```sh
-rustup target add wasm32-wasip1
-cargo build --release --target wasm32-wasip1
-# output: target/wasm32-wasip1/release/poe2_autosplitter.wasm
-```
+1. **Open Splits** → choose your `.lss`.
+2. Right-click → **Open Auto Splitter…** → choose `poe2_autosplitter.wasm`.
+3. Right-click → **Edit Auto Splitter Settings**:
 
-## Usage (livesplit-one-druid)
+| Setting | Meaning |
+|---|---|
+| Client.txt | Path of Exile 2's client log (see below) |
+| Split mode | `Campaign (100%)`, `Campaign (Any%)` or `Level` |
+| Enable auto splitting | master switch for start/split behaviour |
+| Auto start new character runs | start automatically when entering The Riverbank |
 
-Ready-made split files mirroring the original component's "Generate" output
-(same area order, same icons) live in [`splits/`](../splits/):
+Pick the split mode that matches your splits file. Segments are consumed in
+file order regardless of which zone you enter (inherited upstream design), so
+run your route in the file's order for accurate segment labels.
 
-- `Campaign-100.lss` — all campaign areas (96 segments)
-- `Campaign-AnyPercent.lss` — mandatory areas only (78 segments)
-- `Levels-2-100.lss` — one segment per level, 2–100
+4. **Save your splits once** (Splits → Save). The auto splitter's settings are
+   stored inside the `.lss`, so this makes them permanent. They are restored
+   automatically every time you reopen that file — no reconfiguration needed,
+   ever. Settings are per-splits-file: give each file its own save after first
+   configuration.
 
-1. **Open Splits** → pick one of the files above.
-2. Right-click → **Open Auto Splitter…** → select the built `.wasm`.
-3. Right-click → **Edit Auto Splitter Settings** → point it at `Client.txt`
-   and set the matching split mode.
-4. CLI shortcut:
-   `livesplit-one splits/Campaign-AnyPercent.lss -a wasm/target/wasm32-wasip1/release/poe2_autosplitter.wasm`
+### 3. Where Client.txt lives
 
-To regenerate the split files after syncing upstream changes:
-
-```sh
-python3 splits/generate.py
-```
-
-### Where Client.txt lives
-
-- **Windows (Steam):** `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt`
+- **Windows (Steam):**
+  `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt`
+- **Linux (native Steam install, second library drive):**
+  `<library>/steamapps/common/Path of Exile 2/logs/Client.txt`
 - **Linux (Steam Proton, appid 2694490):**
   `~/.steam/steam/steamapps/compatdata/2694490/pfx/drive_c/users/steamuser/Documents/My Games/Path of Exile 2/client.txt`
-- **Wine/Lutris:** same relative path inside the wine prefix.
+- **Wine/Lutris:** same relative path inside that wine prefix.
 
-Note: the sandbox maps the host filesystem under `/mnt`; the timer converts
-your picked path automatically.
+The sandbox maps the host filesystem under `/mnt`; the timer converts your
+picked path automatically.
 
-## Differences from the C# component
+### 4. Hotkeys on Linux/Wayland (server trick)
 
-- Split mode is a preset choice instead of individually checkboxed areas.
-- Level mode splits on every new level (equivalent to generating all levels).
-- No load-time removal yet (upstream TODO as well).
-- No automatic splits-file generation with icons; use any PoE2 `.lss`.
+Global hotkeys of livesplit-one-druid rely on X11 grabs, which do not receive
+keys under Wayland sessions; the evdev fallback requires being in the `input`
+group. The reliable alternative uses the timer's built-in TCP server plus
+desktop-level custom shortcuts — fully Wayland-proof:
 
-## Troubleshooting
+1. Enable the server: right-click → **Settings** → Server → **Enable Server**,
+   port `16834` → OK. (Or add to `~/.local/share/livesplitone/config.yml`:)
 
-Enable logging in the livesplit-one-druid config
-(`~/.local/share/livesplitone/config.yml`):
+   ```yaml
+   server:
+     enable: true
+     port: 16834
+   ```
+
+2. **Restart the timer** — the server starts at launch.
+3. Install the helper script from this directory:
+
+   ```sh
+   cp lss ~/.local/bin/ && chmod +x ~/.local/bin/lss
+   ```
+
+4. Bind desktop custom shortcuts (KDE: System Settings → Keyboard → Shortcuts
+   → Add Command) to commands like:
+
+   | Action | Command |
+   |---|---|
+   | Start run / advance | `lss splitOrStart` |
+   | Split | `lss split` |
+   | Reset | `lss reset` |
+   | Undo split | `lss undoSplit` |
+   | Skip split | `lss skipSplit` |
+   | Pause toggle | `lss togglePauseOrStart` |
+   | Test connection | `lss ping` |
+
+These work whether or not the timer window is focused, on any compositor.
+The server speaks JSON (`{"command":"SplitOrStart"}`) and also accepts classic
+plaintext LiveSplit server commands (`split`), if you prefer raw `nc`/curl.
+
+### 5. Verify & troubleshoot
+
+Enable logging in `~/.local/share/livesplitone/config.yml`:
 
 ```yaml
 log:
@@ -112,9 +150,38 @@ log:
   clear: true
 ```
 
-A `log.txt` appears next to the config; splitter messages (and errors) land
-there. The splitter prints `Watching Client.txt` once the file opens
-successfully.
+Restart, then check `~/.local/share/livesplitone/log.txt`:
+
+- `Loaded auto splitter` + `Watching Client.txt` — splitter running and the
+  log file opened successfully.
+- `[dbg] +N new log lines` — new lines are being consumed.
+- `[dbg] split: <area>` / `[dbg] level N` / `[dbg] start (The Riverbank)` —
+  events firing.
+- `[dbg] unknown area id: …` — the game logged an area we don't track (please
+  report!).
+- Nothing at all? Zone transitions only emit lines on **loading screens**;
+  walking around inside a zone produces nothing. Also make sure the zones you
+  enter come *after* loading the auto splitter.
+
+Known quirks:
+
+- Saving splits through the timer rewrites the file in its own compact style
+  and currently drops segment icons (cosmetic; re-run
+  `python3 splits/generate.py` to get pristine templates back).
+- Cemetery of the Eternals timing is approximate (Lachlann revisit quirk,
+  inherited from upstream).
+- No load-time removal yet (upstream TODO as well).
+
+## Building from source
+
+```sh
+rustup target add wasm32-wasip1
+cargo build --release --target wasm32-wasip1
+# output: target/wasm32-wasip1/release/poe2_autosplitter.wasm
+```
+
+The committed `poe2_autosplitter.wasm` is refreshed manually whenever the
+source changes (same approach as upstream committing its built DLL).
 
 ## Credits & license
 

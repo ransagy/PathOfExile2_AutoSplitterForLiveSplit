@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# lss — send a command to livesplit-one's local TCP server.
+#
+# This is the Wayland-proof way to have global hotkeys for your timer:
+# enable the server in livesplit-one (Settings -> Server, port 16834,
+# restart the app once), then bind desktop custom shortcuts to:
+#
+#   lss splitOrStart     # start the run / advance a segment
+#   lss split
+#   lss reset
+#   lss undoSplit
+#   lss skipSplit
+#   lss togglePauseOrStart
+#   lss getCurrentTime   # read-only, handy for testing
+#
+# usage: lss <command> [port]
+cmd="${1:?usage: lss <command> [port]}"
+port="${2:-${LSS_PORT:-16834}}"
+exec 3<>"/dev/tcp/127.0.0.1/$port" || exit 1
+printf '{"command":"%s"}\n' "$cmd" >&3
+IFS= read -r -t 2 reply <&3 && printf '%s\n' "$reply"
+exec 3<&-
