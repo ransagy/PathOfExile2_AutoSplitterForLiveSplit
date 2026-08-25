@@ -582,9 +582,12 @@ fn handle_line(line: &str, settings: &Settings, triggers: &HashSet<String>, stat
                 return;
             };
 
-            // Automatically start the timer when entering The Riverbank.
-            if area_id == START_AREA_ID && settings.auto_start {
-                if timer::state() == TimerState::NotRunning {
+            // The start area never consumes a segment, regardless of how the
+            // run was started (auto start or manual hotkey): the run begins
+            // there, and checkpoint resets reload it without advancing.
+            // With auto start enabled it also starts the timer.
+            if area_id == START_AREA_ID {
+                if settings.auto_start && timer::state() == TimerState::NotRunning {
                     timer::start();
                     asr::print_message("[dbg] start (The Riverbank)");
                 }
