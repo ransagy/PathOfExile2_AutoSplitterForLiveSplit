@@ -178,6 +178,8 @@ enum SplitMode {
     AnyPercent,
     /// Level - split on every level up
     Level,
+    /// Custom - split on areas present in your splits file
+    Custom,
 }
 
 #[derive(Gui)]
@@ -187,6 +189,10 @@ struct Settings {
     /// Path of Exile 2 Client.txt
     #[filter(("Log Files", "*.txt"))]
     client_log: FileSelect,
+
+    /// Splits file (for Custom split mode)
+    #[filter(("LiveSplit Splits", "*.lss"))]
+    splits_file: FileSelect,
 
     /// Split mode
     split_mode: SplitMode,
@@ -383,6 +389,135 @@ impl RunState {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Custom mode: derive the trigger set from the user's splits file
+// ---------------------------------------------------------------------------
+
+/// The set of area IDs to split on in Custom mode, parsed from the segment
+/// names of the user's `.lss` file. Re-parsed whenever the file changes.
+struct SplitsTriggers {
+    path: String,
+    /// (file length, mtime nanos) of the last parse - cheap change detection.
+    signature: Option<(u64, u64)>,
+    ids: HashSet<String>,
+}
+
+impl SplitsTriggers {
+    fn new() -> Self {
+        Self {
+            path: String::new(),
+            signature: None,
+            ids: HashSet::new(),
+        }
+    }
+
+    /// Refreshes the trigger set if needed. Returns `true` when a new file
+    /// was selected (so run state can be cleared).
+    fn update(&mut self, path: &str) -> bool {
+        if path != self.path {
+            self.path.clear();
+            self.path.push_str(path);
+            self.signature = None;
+            self.ids.clear();
+            return !self.path.is_empty();
+        }
+        if self.path.is_empty() {
+            return false;
+        }
+
+        // Cheap change detection via metadata instead of re-reading each tick.
+        let sig = File::open(&self.path).ok().and_then(|f| {
+            let meta = f.metadata().ok()?;
+            let mtime = meta
+                .modified()
+                .ok()?
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()?;
+            Some((meta.len(), mtime.as_nanos() as u64))
+        });
+
+        match sig {
+            Some(s) if Some(s) == self.signature => {} // unchanged
+            Some(s) => {
+                self.signature = Some(s);
+                self.reparse();
+            }
+            None => {}
+        }
+        false
+    }
+
+    fn reparse(&mut self) {
+        self.ids.clear();
+        let Ok(contents) = std::fs::read_to_string(&self.path) else {
+            asr::print_message("Failed reading splits file for Custom mode");
+            return;
+        };
+
+        let names = extract_segment_names(&contents);
+        let mut unknown: Vec<&str> = Vec::new();
+        for name in &names {
+            match AREAS.iter().find(|a| a.name == *name) {
+                Some(area) => {
+                    self.ids.insert(area.id.to_string());
+                }
+                None => unknown.push(name),
+            }
+        }
+
+        if self.ids.is_empty() {
+            asr::print_message(
+                "Custom mode: no known PoE2 areas found in splits file - no area splits will fire",
+            );
+        } else {
+            asr::print_message(&format!(
+                "Custom mode: tracking {} areas from splits file",
+                self.ids.len()
+            ));
+            for u in &unknown {
+                asr::print_message(&format!("[dbg] segment without trigger: {u}"));
+            }
+        }
+    }
+}
+
+/// Extracts the text of all `<Name>...</Name>` elements inside the
+/// `<Segments>` section of an `.lss` document. Deliberately dependency-free:
+/// the format is machine-written and regular enough for a plain scan.
+fn extract_segment_names(contents: &str) -> Vec<String> {
+    let region = match (
+        contents.find("<Segments>"),
+        contents.find("</Segments>"),
+    ) {
+        (Some(start), Some(end)) if start < end => &contents[start..end],
+        _ => contents,
+    };
+
+    let mut names = Vec::new();
+    let mut rest = region;
+    while let Some(start) = rest.find("<Name>") {
+        rest = &rest[start + "<Name>".len()..];
+        let Some(end) = rest.find("</Name>") else { break };
+        let raw = &rest[..end];
+        rest = &rest[end..];
+
+        let name = xml_unescape(raw.trim());
+        if !name.is_empty() {
+            names.push(name);
+        }
+    }
+    names
+}
+
+fn xml_unescape(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        // Must be last so "&amp;lt;" correctly becomes "&lt;".
+        .replace("&amp;", "&")
+}
+
 async fn main() {
     let mut settings = Settings::register();
     asr::print_message("Path of Exile 2 AutoSplitter (WASM port) loaded");
@@ -390,12 +525,17 @@ async fn main() {
     let mut tail = LogTail::new();
     let mut state = RunState::default();
     let mut prev_timer_state = timer::state();
+    let mut triggers = SplitsTriggers::new();
 
     loop {
         settings.update();
 
         // React to the log path changing at runtime.
         if tail.sync_path(settings.client_log.path.as_str()) {
+            state.clear();
+        }
+        // In Custom mode, keep the trigger set in sync with the splits file.
+        if triggers.update(settings.splits_file.path.as_str()) {
             state.clear();
         }
         tail.ensure_open();
@@ -418,7 +558,7 @@ async fn main() {
         prev_timer_state = current_timer_state;
 
         for line in &lines {
-            handle_line(line, &settings, &mut state);
+            handle_line(line, &settings, &triggers.ids, &mut state);
         }
         if !lines.is_empty() {
             asr::print_message(&format!("[dbg] +{} new log lines", lines.len()));
@@ -428,7 +568,7 @@ async fn main() {
     }
 }
 
-fn handle_line(line: &str, settings: &Settings, state: &mut RunState) {
+fn handle_line(line: &str, settings: &Settings, triggers: &HashSet<String>, state: &mut RunState) {
     if !settings.auto_split {
         return;
     }
@@ -458,6 +598,7 @@ fn handle_line(line: &str, settings: &Settings, state: &mut RunState) {
                 SplitMode::Full => true,
                 SplitMode::AnyPercent => area.mandatory,
                 SplitMode::Level => false,
+                SplitMode::Custom => triggers.contains(area_id),
             };
 
             if in_active_set && !state.encountered_areas.contains(area_id) {

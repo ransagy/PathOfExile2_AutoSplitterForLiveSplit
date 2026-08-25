@@ -73,13 +73,21 @@ regenerated from upstream sources by [`splits/generate.py`](../splits/generate.p
 | Setting | Meaning |
 |---|---|
 | Client.txt | Path of Exile 2's client log (see below) |
-| Split mode | `Campaign (100%)`, `Campaign (Any%)` or `Level` |
+| Splits file | Your `.lss` - used as the trigger set in **Custom** mode |
+| Split mode | `Campaign (100%)`, `Campaign (Any%)`, `Level`, or `Custom (from splits file)` |
 | Enable auto splitting | master switch for start/split behaviour |
 | Auto start new character runs | start automatically when entering The Riverbank |
 
-Pick the split mode that matches your splits file. Segments are consumed in
-file order regardless of which zone you enter (inherited upstream design), so
-run your route in the file's order for accurate segment labels.
+Pick the split mode that matches your splits file:
+
+- **Campaign (100%)** expects the full 96-area file.
+- **Campaign (Any%)** expects the 78 mandatory areas.
+- **Custom** fires on exactly the areas whose names appear as segments in the
+  splits file you picked under *Splits file* — build any hybrid you like
+  (drop optionals, add them back, one label per act boss: non-area labels are
+  simply passed over without consuming a segment). Edit the file whenever you
+  want; the splitter notices changes on its own. Keep `The Ziggurat Refuge`
+  as the final segment so the run ends there.
 
 4. **Save your splits once** (Splits → Save). The auto splitter's settings are
    stored inside the `.lss`, so this makes them permanent. They are restored
