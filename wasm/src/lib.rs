@@ -264,11 +264,12 @@ impl LogTail {
         }
     }
 
-    /// Returns all complete lines appended since the last call, plus whether
-    /// the file was truncated or recreated since then.
-    fn poll_lines(&mut self) -> (Vec<String>, bool) {
+    /// Returns all complete lines appended since the last call. If the game
+    /// recreated the log (truncation), the fresh file is reopened from the
+    /// start and replayed - safe because already-seen areas/levels are
+    /// suppressed by the run state, so in-progress runs survive restarts.
+    fn poll_lines(&mut self) -> Vec<String> {
         let mut lines = Vec::new();
-        let mut truncated = false;
 
         loop {
             let Some(reader) = self.reader.as_mut() else {
@@ -293,12 +294,15 @@ impl LogTail {
         }
 
         // Truncation / recreation check: if the file is now shorter than what
-        // we already consumed, it was rewritten (new PoE2 session).
+        // we already consumed, it was rewritten (game restarted).
         if let Some(reader) = self.reader.as_mut() {
             if let (Ok(pos), Ok(meta)) = (reader.stream_position(), reader.get_ref().metadata()) {
                 if meta.len() < pos {
-                    truncated = true;
+                    asr::print_message("Client.txt was recreated - replaying it (run state kept)");
                     match File::open(&self.path) {
+                        // Deliberately NOT seeking to end: the replay is
+                        // idempotent, and lines written between the recreation
+                        // and this poll must not be skipped.
                         Ok(file) => *reader = BufReader::new(file),
                         Err(_) => self.reader = None,
                     }
@@ -306,7 +310,7 @@ impl LogTail {
             }
         }
 
-        (lines, truncated)
+        lines
     }
 }
 
@@ -539,11 +543,7 @@ async fn main() {
             state.clear();
         }
         tail.ensure_open();
-        let (lines, truncated) = tail.poll_lines();
-        if truncated {
-            // New game session - reset progress tracking like a fresh start.
-            state.clear();
-        }
+        let lines = tail.poll_lines();
 
         // Mirror the original component's OnStart handler: clear all progress
         // whenever the timer transitions into Running or back to NotRunning.
