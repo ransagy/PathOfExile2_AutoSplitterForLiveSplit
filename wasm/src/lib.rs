@@ -545,13 +545,14 @@ async fn main() {
         tail.ensure_open();
         let lines = tail.poll_lines();
 
-        // Mirror the original component's OnStart handler: clear all progress
-        // whenever the timer transitions into Running or back to NotRunning.
+        // Mirror the original component's OnStart handler: clear progress when
+        // a run truly starts or is reset. Pause/resume must NOT count - it
+        // used to wipe encountered-areas on every resume.
         let current_timer_state = timer::state();
-        let fresh_start =
-            current_timer_state == TimerState::Running && prev_timer_state != TimerState::Running;
-        let fresh_reset =
-            current_timer_state == TimerState::NotRunning && prev_timer_state != TimerState::NotRunning;
+        let fresh_start = current_timer_state == TimerState::Running
+            && (prev_timer_state == TimerState::NotRunning || prev_timer_state == TimerState::Ended);
+        let fresh_reset = current_timer_state == TimerState::NotRunning
+            && prev_timer_state != TimerState::NotRunning;
         if fresh_start || fresh_reset {
             state.clear();
         }
