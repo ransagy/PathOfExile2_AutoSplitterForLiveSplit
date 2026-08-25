@@ -405,6 +405,9 @@ struct SplitsTriggers {
     /// (file length, mtime nanos) of the last parse - cheap change detection.
     signature: Option<(u64, u64)>,
     ids: HashSet<String>,
+    /// Area IDs in file order. The last one is the finish line: entering it
+    /// ends the run.
+    order: Vec<String>,
 }
 
 impl SplitsTriggers {
@@ -413,6 +416,7 @@ impl SplitsTriggers {
             path: String::new(),
             signature: None,
             ids: HashSet::new(),
+            order: Vec::new(),
         }
     }
 
@@ -455,6 +459,7 @@ impl SplitsTriggers {
 
     fn reparse(&mut self) {
         self.ids.clear();
+        self.order.clear();
         let Ok(contents) = std::fs::read_to_string(&self.path) else {
             asr::print_message("Failed reading splits file for Custom mode");
             return;
@@ -466,6 +471,7 @@ impl SplitsTriggers {
             match AREAS.iter().find(|a| a.name == *name) {
                 Some(area) => {
                     self.ids.insert(area.id.to_string());
+                    self.order.push(area.id.to_string());
                 }
                 None => unknown.push(name),
             }
@@ -568,7 +574,7 @@ async fn main() {
         }
 
         for line in &lines {
-            handle_line(line, &settings, &triggers.ids, &mut state);
+            handle_line(line, &settings, &triggers, &mut state);
         }
         if !lines.is_empty() {
             asr::print_message(&format!("[dbg] +{} new log lines", lines.len()));
@@ -578,7 +584,12 @@ async fn main() {
     }
 }
 
-fn handle_line(line: &str, settings: &Settings, triggers: &HashSet<String>, state: &mut RunState) {
+fn handle_line(
+    line: &str,
+    settings: &Settings,
+    triggers: &SplitsTriggers,
+    state: &mut RunState,
+) {
     if !settings.auto_split {
         return;
     }
@@ -611,7 +622,7 @@ fn handle_line(line: &str, settings: &Settings, triggers: &HashSet<String>, stat
                 SplitMode::Full => true,
                 SplitMode::AnyPercent => area.mandatory,
                 SplitMode::Level => false,
-                SplitMode::Custom => triggers.contains(area_id),
+                SplitMode::Custom => triggers.ids.contains(area_id),
             };
 
             if in_active_set && !state.encountered_areas.contains(area_id) {
@@ -619,11 +630,19 @@ fn handle_line(line: &str, settings: &Settings, triggers: &HashSet<String>, stat
                 asr::print_message(&format!("[dbg] split: {}", area.name));
             }
 
-            if area_id == END_AREA_ID {
-                // Additional Split() call to end the run, same as the original
-                // component.
-                timer::split();
-                asr::print_message("[dbg] split (end of run)");
+            // The finish line ends the run: Ziggurat Refuge for the campaign
+            // modes, or the last segment of the splits file in Custom mode.
+            // The extra split completes the finish-line segment itself.
+            let finish_area = match settings.split_mode {
+                SplitMode::Full | SplitMode::AnyPercent => Some(END_AREA_ID),
+                SplitMode::Level => None,
+                SplitMode::Custom => triggers.order.last().map(|s| s.as_str()),
+            };
+            if let Some(finish) = finish_area {
+                if area_id == finish {
+                    timer::split();
+                    asr::print_message("[dbg] split (finish line)");
+                }
             }
 
             state.encountered_areas.insert(area_id.to_string());
