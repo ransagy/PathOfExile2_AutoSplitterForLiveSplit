@@ -1,0 +1,26 @@
+[package]
+name = "poe2-autosplitter"
+version = "0.1.0"
+edition = "2021"
+description = "Path of Exile 2 auto splitter for LiveSplit One's sandboxed auto splitting runtime (WASM port of the LiveSplit.PathOfExile2AutoSplitter component)"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+asr = { git = "https://github.com/LiveSplit/asr", features = [
+    "alloc",   # Working with allocations (required by FileSelect).
+    "derive",  # Deriving the settings GUI.
+] }
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+lto = true
+panic = "abort"
+codegen-units = 1
+strip = true
+
+[profile.release.build-override]
+opt-level = 0
