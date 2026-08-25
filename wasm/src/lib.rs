@@ -420,15 +420,16 @@ impl SplitsTriggers {
     /// was selected (so run state can be cleared). Empty paths are ignored so
     /// a transient settings read can never reset run state.
     fn update(&mut self, path: &str) -> bool {
-        if path.is_empty() || path == self.path {
+        if path.is_empty() {
             return false;
         }
-        self.path.clear();
-        self.path.push_str(path);
-        self.signature = None;
-        self.ids.clear();
-        true
-    }
+        if path != self.path {
+            self.path.clear();
+            self.path.push_str(path);
+            self.signature = None;
+            self.ids.clear();
+            return true;
+        }
 
         // Cheap change detection via metadata instead of re-reading each tick.
         let sig = File::open(&self.path).ok().and_then(|f| {
