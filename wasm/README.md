@@ -68,7 +68,10 @@ regenerated from upstream sources by [`splits/generate.py`](../splits/generate.p
 
 1. **Open Splits** → choose your `.lss`.
 2. Right-click → **Open Auto Splitter…** → choose `poe2_autosplitter.wasm`.
-3. Right-click → **Edit Auto Splitter Settings**:
+
+### 3. Configure settings
+
+Right-click → **Edit Auto Splitter Settings**:
 
 | Setting | Meaning |
 |---|---|
@@ -106,13 +109,13 @@ Pick the split mode that matches your splits file:
 - The Riverbank (run start) never consumes a segment, whether you use auto
   start or start manually.
 
-4. **Save your splits once** (Splits → Save). The auto splitter's settings are
-   stored inside the `.lss`, so this makes them permanent. They are restored
-   automatically every time you reopen that file — no reconfiguration needed,
-   ever. Settings are per-splits-file: give each file its own save after first
-   configuration.
+When you're done configuring, **save your splits once** (Splits → Save). The
+auto splitter's settings are stored inside the `.lss`, so this makes them
+permanent. They are restored automatically every time you reopen that file —
+no reconfiguration needed, ever. Settings are per-splits-file: give each file
+its own save after first configuration.
 
-### 3. Where Client.txt lives
+### 4. Where Client.txt lives
 
 - **Windows (Steam):**
   `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt`
@@ -125,7 +128,7 @@ Pick the split mode that matches your splits file:
 The sandbox maps the host filesystem under `/mnt`; the timer converts your
 picked path automatically.
 
-### 4. Hotkeys on Linux/Wayland (server trick)
+### 5. Hotkeys on Linux/Wayland (server trick)
 
 Global hotkeys of livesplit-one-druid rely on X11 grabs, which do not receive
 keys under Wayland sessions; the evdev fallback requires being in the `input`
@@ -165,7 +168,7 @@ These work whether or not the timer window is focused, on any compositor.
 The server speaks JSON (`{"command":"SplitOrStart"}`) and also accepts classic
 plaintext LiveSplit server commands (`split`), if you prefer raw `nc`/curl.
 
-### 5. Verify & troubleshoot
+### 6. Verify & troubleshoot
 
 Enable logging in `~/.local/share/livesplitone/config.yml`:
 
@@ -180,9 +183,11 @@ Restart, then check `~/.local/share/livesplitone/log.txt`:
 
 - `Loaded auto splitter` + `Watching Client.txt` — splitter running and the
   log file opened successfully.
-- `[dbg] +N new log lines` — new lines are being consumed.
-- `[dbg] split: <area>` / `[dbg] level N` / `[dbg] start (The Riverbank)` —
-  events firing.
+- `[dbg] +N new log lines` and `[dbg] level N` — only with **Verbose debug
+  logging** enabled.
+- `[dbg] split: <area>` / `[dbg] start (The Riverbank)` / `[dbg] run state
+  cleared (…)` — always logged; events firing and state transitions with
+  their causes.
 - `[dbg] unknown area id: …` — the game logged an area we don't track (please
   report!).
 - Nothing at all? Zone transitions only emit lines on **loading screens**;
@@ -200,6 +205,23 @@ Known quirks:
   (Lachlann revisit quirk, inherited from upstream). In Custom mode you can
   collapse the whole cemetery questline into a single segment instead.
 - No load-time removal yet (upstream TODO as well).
+
+## Differences from the C# component
+
+- **Trigger curation**: the original used per-area checkboxes (persisted in
+  the layout/splits XML) plus a Generate button that rebuilt your segments.
+  The WASM sandbox can neither read the timer's run data nor write files, so
+  this port replaces both with **presets** (`100%` / `Any%`) and **Custom
+  mode**, where your splits file itself is the trigger set — edit segments
+  and that's your configuration.
+- **No Generate button**: generating a `.lss` requires run-write access the
+  sandbox forbids. Stock files ship in [`splits/`](../splits/) instead, and
+  `generate.py` rebuilds them from upstream sources.
+- **Finisher**: campaign modes auto-end when The Ziggurat Refuge loads;
+  Custom mode ends at the file's last segment; racers who stop after the
+  final boss finish with one manual split.
+- Everything else matches upstream semantics: same Client.txt tailing, same
+  first-entry splits, same known limits (no load-time removal yet).
 
 ## Building from source
 

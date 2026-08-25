@@ -19,6 +19,7 @@
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Seek, SeekFrom};
+use std::time::{Duration, Instant};
 
 use asr::{
     future::next_tick,
@@ -222,6 +223,9 @@ struct LogTail {
     path: String,
     reader: Option<BufReader<File>>,
     open_failure_reported: bool,
+    /// Exponential backoff state for repeated failed opens (game not running).
+    open_failures: u32,
+    retry_at: Option<Instant>,
 }
 
 impl LogTail {
@@ -230,6 +234,8 @@ impl LogTail {
             path: String::new(),
             reader: None,
             open_failure_reported: false,
+            open_failures: 0,
+            retry_at: None,
         }
     }
 
@@ -243,6 +249,8 @@ impl LogTail {
         self.path.clear();
         self.path.push_str(path);
         self.reader = None;
+        self.open_failures = 0;
+        self.retry_at = None;
         true
     }
 
@@ -251,20 +259,30 @@ impl LogTail {
         if self.reader.is_some() || self.path.is_empty() {
             return;
         }
+        if let Some(retry_at) = self.retry_at {
+            if Instant::now() < retry_at {
+                return;
+            }
+        }
         match File::open(&self.path) {
             Ok(mut file) => {
                 let _ = file.seek(SeekFrom::End(0));
                 asr::print_message("Watching Client.txt");
                 self.open_failure_reported = false;
+                self.open_failures = 0;
+                self.retry_at = None;
                 self.reader = Some(BufReader::new(file));
             }
             Err(err) => {
-                // Report failures once instead of spamming the log on every
-                // retry tick.
+                // Report failures once per streak, then retry on an
+                // exponential backoff (1s, 2s, 4s ... capped at 64s).
                 if !self.open_failure_reported {
                     self.open_failure_reported = true;
                     asr::print_message(&format!("Client.txt open failed: {err}"));
                 }
+                let shift = self.open_failures.min(6);
+                self.retry_at = Some(Instant::now() + Duration::from_secs(1 << shift));
+                self.open_failures += 1;
             }
         }
     }
@@ -323,6 +341,7 @@ impl LogTail {
 // Log line parsing (ported from Component/ClientLog/ClientParser.cs)
 // ---------------------------------------------------------------------------
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Event<'a> {
     /// `... Generating level N area "<id>"` - the player entered an area.
     /// The captured token is the **area ID** (e.g. `G1_town`), not the name.
@@ -542,6 +561,7 @@ async fn main() {
     let mut state = RunState::default();
     let mut prev_timer_state = timer::state();
     let mut triggers = SplitsTriggers::new();
+    let mut mismatch_warned = false;
 
     loop {
         settings.update();
@@ -551,9 +571,23 @@ async fn main() {
             state.clear();
         }
         // In Custom mode, keep the trigger set in sync with the splits file.
-        if triggers.update(settings.splits_file.path.as_str()) {
+        // Other modes never read it, so skip the per-tick stat entirely.
+        if settings.split_mode == SplitMode::Custom
+            && triggers.update(settings.splits_file.path.as_str())
+        {
             state.clear();
         }
+
+        // Gentle one-shot hint for the silent failure mode: a configured
+        // splits file does nothing unless Custom mode is selected.
+        let file_configured = !settings.splits_file.path.is_empty();
+        let mismatch = file_configured && settings.split_mode != SplitMode::Custom;
+        if mismatch && !mismatch_warned {
+            asr::print_message(
+                "Splits file is set but split mode isn't Custom - the file won't be used",
+            );
+        }
+        mismatch_warned = mismatch;
         tail.ensure_open();
         let lines = tail.poll_lines();
 
@@ -662,5 +696,115 @@ fn handle_line(
             state.levels_reached.insert(level);
         }
         Event::InstanceDetails | Event::Nothing => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- xml_unescape ----------------------------------------------------
+
+    #[test]
+    fn unescape_handles_all_entities_and_ordering() {
+        assert_eq!(xml_unescape("Traitor&apos;s Passage"), "Traitor's Passage");
+        assert_eq!(xml_unescape("Jiquani&apos;s Sanctum"), "Jiquani's Sanctum");
+        // &amp;lt; must become the literal text "&lt;", not "<".
+        assert_eq!(xml_unescape("&amp;lt;"), "&lt;");
+        assert_eq!(xml_unescape("a &amp; b &lt;c&gt; &quot;d&quot;"), "a & b <c> \"d\"");
+    }
+
+    // ---- extract_segment_names -------------------------------------------
+
+    const PRETTY: &str = "\
+<Run version=\"1.7.0\">
+  <GameName>Path of Exile 2</GameName>
+  <Segments>
+    <Segment>
+      <Name>The Riverbank</Name>
+      <IconImage>AAAA</IconImage>
+    </Segment>
+    <Segment>
+      <Name>Traitor&apos;s Passage</Name>
+      <IconImage />
+    </Segment>
+    <Segment>
+      <Name></Name>
+    </Segment>
+  </Segments>
+</Run>";
+
+    #[test]
+    fn segment_names_pretty_printed() {
+        let names = extract_segment_names(PRETTY);
+        assert_eq!(names, vec!["The Riverbank", "Traitor's Passage"]);
+    }
+
+    #[test]
+    fn segment_names_compact_resaved() {
+        let compact = "<?xml?><Run version=\"1.8.0\"><GameName>P</GameName><Segments>\
+             <Segment><Name>The Riverbank</Name><Icon/></Segment>\
+             <Segment><Name>Act 1 Boss</Name><Icon/></Segment>\
+           </Segments><AutoSplitterSettings/></Run>";
+        let names = extract_segment_names(compact);
+        assert_eq!(names, vec!["The Riverbank", "Act 1 Boss"]);
+    }
+
+    #[test]
+    fn segment_names_without_segments_wrapper_scans_whole_doc() {
+        assert_eq!(extract_segment_names("<Name>Solo</Name>"), vec!["Solo"]);
+        assert!(extract_segment_names("<nothing/>").is_empty());
+    }
+
+    // ---- extract_area_id / extract_level / parse_line ---------------------
+
+    const AREA_LINE: &str = "2026/08/25 15:49:58 8976354 2caa2332 [DEBUG Client 332] Generating level 12 area \"G1_13_2\" with seed 3742364270";
+    const LEVEL_LINE: &str =
+        "2026/08/25 16:38:16 11979831 3ef231e0 [INFO Client 332] : CHaospracs (Warrior) is now level 10";
+    const INSTANCE_LINE: &str =
+        "2026/08/25 03:48:39 31479523 2d8e6512 [DEBUG Client 332] Got Instance Details from login server";
+
+    #[test]
+    fn area_id_extracted_from_real_line() {
+        assert_eq!(extract_area_id(AREA_LINE), Some("G1_13_2"));
+    }
+
+    #[test]
+    fn area_id_none_without_marker() {
+        assert_eq!(extract_area_id(INSTANCE_LINE), None);
+    }
+
+    #[test]
+    fn level_extracted_and_anchored() {
+        assert_eq!(extract_level(LEVEL_LINE), Some(10));
+        assert_eq!(parse_line(LEVEL_LINE), Event::Level(10));
+        // Trailing junk after the number breaks the `$` anchor semantics.
+        let noisy = "2026/08/25 16:38:16 1 abc [INFO Client 332] : x is now level 10 soon";
+        assert_eq!(extract_level(noisy), None);
+    }
+
+    #[test]
+    fn parse_line_classifies() {
+        assert_eq!(parse_line(AREA_LINE), Event::Area("G1_13_2"));
+        assert_eq!(parse_line(INSTANCE_LINE), Event::InstanceDetails);
+        assert_eq!(parse_line("chat: hi"), Event::Nothing);
+    }
+
+    // ---- Custom trigger parsing end-to-end on a hybrid fixture ------------
+
+    #[test]
+    fn custom_hybrid_matches_only_known_areas_in_order() {
+        let doc = "<Segments>\
+             <Segment><Name>The Grim Tangle</Name></Segment>\
+             <Segment><Name>Act 1 Boss</Name></Segment>\
+             <Segment><Name>Hunting Grounds</Name></Segment>\
+             <Segment><Name>The Ziggurat Refuge</Name></Segment>\
+           </Segments>";
+        // Same primitives reparse() uses: names -> ids via the area table.
+        let ids: Vec<&'static str> = extract_segment_names(doc)
+            .iter()
+            .filter_map(|n| AREAS.iter().find(|a| a.name == *n).map(|a| a.id))
+            .collect();
+        assert_eq!(ids, vec!["G1_6", "G1_11", "G_Endgame_Town"]);
     }
 }
