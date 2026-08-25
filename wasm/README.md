@@ -15,15 +15,16 @@ inside the cross-platform WASM auto splitting runtime.
 
 ## Quick Start
 
-1. Download the prebuilt auto splitter:
+1. Make yourself a folder for speedrun files, e.g. `mkdir ~/livesplit`.
+2. Download the prebuilt auto splitter:
    [`poe2_autosplitter.wasm`](./poe2_autosplitter.wasm)
    (committed alongside these sources, mirroring how the original component
-   ships its DLL in `Component/DLL/`).
-2. Grab a splits file from [`splits/`](../splits/) — e.g.
-   `Campaign-AnyPercent.lss`.
-3. In your timer: **Open Splits** → pick that `.lss`, then right-click →
+   ships its DLL in `Component/DLL/`) — save it into that folder.
+3. Grab a splits file from [`splits/`](../splits/) — e.g.
+   `Campaign-AnyPercent.lss` — into the same folder.
+4. In your timer: **Open Splits** → pick that `.lss`, then right-click →
    **Open Auto Splitter…** → pick `poe2_autosplitter.wasm`.
-4. Right-click → **Edit Auto Splitter Settings** → point it at PoE2's
+5. Right-click → **Edit Auto Splitter Settings** → point it at PoE2's
    `Client.txt` and pick your split mode. Save your splits once so the path is
    remembered.
 
