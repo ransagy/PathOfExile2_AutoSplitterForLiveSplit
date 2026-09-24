@@ -553,6 +553,29 @@ fn xml_unescape(s: &str) -> String {
         .replace("&amp;", "&")
 }
 
+/// Runs the per-tick run-state transitions, extracted from `main()` so tests
+/// can drive ticks directly. Mirrors the original component's OnStart handler:
+/// clear progress when a run truly starts or is reset. Pause/resume must NOT
+/// count - it used to wipe encountered-areas on every resume. Unknown reports
+/// are ignored entirely (no transition evaluated, prev unchanged).
+fn on_timer_tick(prev_timer_state: &mut TimerState, state: &mut RunState) {
+    let current_timer_state = timer::state();
+    if current_timer_state != TimerState::Unknown {
+        let prev = *prev_timer_state;
+        let fresh_start = current_timer_state == TimerState::Running
+            && (prev == TimerState::NotRunning || prev == TimerState::Ended);
+        let fresh_reset = current_timer_state == TimerState::NotRunning
+            && prev != TimerState::NotRunning;
+        if fresh_start || fresh_reset {
+            asr::print_message(&format!(
+                "[dbg] run state cleared ({current_timer_state:?} after {prev:?})"
+            ));
+            state.clear();
+        }
+        *prev_timer_state = current_timer_state;
+    }
+}
+
 async fn main() {
     let mut settings = Settings::register();
     asr::print_message("Path of Exile 2 AutoSplitter (WASM port) loaded");
@@ -591,25 +614,7 @@ async fn main() {
         tail.ensure_open();
         let lines = tail.poll_lines();
 
-        // Mirror the original component's OnStart handler: clear progress when
-        // a run truly starts or is reset. Pause/resume must NOT count - it
-        // used to wipe encountered-areas on every resume. Unknown reports are
-        // ignored entirely (no transition evaluated, prev unchanged).
-        let current_timer_state = timer::state();
-        if current_timer_state != TimerState::Unknown {
-            let fresh_start = current_timer_state == TimerState::Running
-                && (prev_timer_state == TimerState::NotRunning
-                    || prev_timer_state == TimerState::Ended);
-            let fresh_reset = current_timer_state == TimerState::NotRunning
-                && prev_timer_state != TimerState::NotRunning;
-            if fresh_start || fresh_reset {
-                asr::print_message(&format!(
-                    "[dbg] run state cleared ({current_timer_state:?} after {prev_timer_state:?})"
-                ));
-                state.clear();
-            }
-            prev_timer_state = current_timer_state;
-        }
+        on_timer_tick(&mut prev_timer_state, &mut state);
 
         for line in &lines {
             handle_line(line, &settings, &triggers, &mut state);
@@ -919,5 +924,204 @@ mod tests {
             .filter_map(|n| AREAS.iter().find(|a| a.name == *n).map(|a| a.id))
             .collect();
         assert_eq!(ids, vec!["G1_6", "G1_11", "G_Endgame_Town"]);
+    }
+
+    // ---- T1 characterization goldens (recorded against pre-Entry code) ---
+    //
+    // These freeze what the CURRENT splitter does. The T2 Entry change must
+    // leave every one of them byte-identical (Exit is the default mode).
+
+    use test_harness::Call;
+
+    fn settings_full() -> Settings {
+        Settings {
+            _general: Title,
+            client_log: FileSelect {
+                path: String::new(),
+            },
+            splits_file: FileSelect {
+                path: String::new(),
+            },
+            split_mode: SplitMode::Full,
+            auto_split: true,
+            auto_start: false,
+            debug_log: false,
+        }
+    }
+
+    /// Log-line shapes copied from the real fixture (marker + quotes around
+    /// the id is all `parse_line` reads).
+    fn area_line(id: &str) -> String {
+        format!(
+            "2025/10/11 15:10:21 1372614 2caa1a34 [DEBUG Client 448] \
+             Generating level 1 area \"{id}\" with seed 2708865591"
+        )
+    }
+    fn level_line(n: u32) -> String {
+        format!(
+            "2025/10/11 15:13:36 1567527 3ef232c2 [INFO Client 448] \
+             TestChar is now level {n}"
+        )
+    }
+    // INSTANCE_LINE (defined above for the parser tests) doubles as feed.
+
+    /// Drives the real decision path: lines through `handle_line`, ticks
+    /// through `on_timer_tick`, recording what reaches the timer API.
+    struct Scenario {
+        settings: Settings,
+        triggers: SplitsTriggers,
+        state: RunState,
+        prev: TimerState,
+    }
+
+    impl Scenario {
+        /// Timer reads `Running` (mid-run attach): the line-driven default.
+        fn new(settings: Settings) -> Self {
+            test_harness::set_timer_state(TimerState::Running);
+            Self {
+                settings,
+                triggers: SplitsTriggers::new(),
+                state: RunState::default(),
+                prev: TimerState::Running,
+            }
+        }
+        fn line(&mut self, line: &str) -> Vec<Call> {
+            handle_line(line, &self.settings, &self.triggers, &mut self.state);
+            test_harness::take_calls()
+        }
+        fn area(&mut self, id: &str) -> Vec<Call> {
+            self.line(&area_line(id))
+        }
+        fn tick(&mut self) -> Vec<Call> {
+            on_timer_tick(&mut self.prev, &mut self.state);
+            test_harness::take_calls()
+        }
+        /// Scripts what `timer::state()` reports to the next tick/line.
+        fn script(&mut self, state: TimerState) {
+            test_harness::set_timer_state(state);
+        }
+    }
+
+    #[test]
+    fn golden_start_area_never_splits() {
+        let mut sc = Scenario::new(settings_full());
+        assert!(sc.area("G1_1").is_empty());
+        assert!(sc.area("G1_1").is_empty()); // checkpoint reload of start zone
+    }
+
+    #[test]
+    fn golden_auto_start_starts_the_timer() {
+        let mut s = settings_full();
+        s.auto_start = true;
+        let mut sc = Scenario::new(s);
+        sc.script(TimerState::NotRunning);
+        assert_eq!(sc.area("G1_1"), vec![Call::Start]); // stub flips to Running
+        assert!(sc.area("G1_1").is_empty()); // running now: no second start
+    }
+
+    #[test]
+    fn golden_finish_double_splits_then_extra_alone() {
+        let mut sc = Scenario::new(settings_full());
+        // First entry: normal split + Exit-only extra (current behaviour).
+        assert_eq!(sc.area("G_Endgame_Town"), vec![Call::Split, Call::Split]);
+        // Re-entry: the extra has no `encountered` gate - it fires again.
+        assert_eq!(sc.area("G_Endgame_Town"), vec![Call::Split]);
+    }
+
+    #[test]
+    fn golden_town_reentry_guarded() {
+        let mut sc = Scenario::new(settings_full());
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]);
+        assert!(sc.area("G1_town").is_empty());
+    }
+
+    #[test]
+    fn golden_unknown_id_is_inert() {
+        let mut sc = Scenario::new(settings_full());
+        assert!(sc.area("Zzz_not_a_real_area").is_empty());
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]); // state untouched
+    }
+
+    #[test]
+    fn golden_level_mode_splits_once_per_new_level() {
+        let mut s = settings_full();
+        s.split_mode = SplitMode::Level;
+        let mut sc = Scenario::new(s);
+        assert_eq!(sc.line(&level_line(2)), vec![Call::Split]);
+        assert!(sc.line(&level_line(2)).is_empty()); // duplicate: guarded
+        assert_eq!(sc.line(&level_line(3)), vec![Call::Split]);
+        assert!(sc.line(INSTANCE_LINE).is_empty());
+    }
+
+    #[test]
+    fn golden_levels_are_inert_outside_level_mode() {
+        let mut sc = Scenario::new(settings_full());
+        assert!(sc.line(&level_line(2)).is_empty());
+        assert!(sc.line(&level_line(3)).is_empty());
+    }
+
+    #[test]
+    fn golden_full_campaign_walk() {
+        let mut sc = Scenario::new(settings_full());
+        let mut calls = Vec::new();
+        for area in AREAS {
+            calls.extend(sc.area(area.id));
+        }
+        // start area suppressed, every other tracked area splits once,
+        // the finish entry adds the Exit-only extra: 95 + 1 = 96
+        assert_eq!(calls, vec![Call::Split; 96]);
+    }
+
+    #[test]
+    fn golden_anypercent_walk_splits_mandatory_only() {
+        let mut s = settings_full();
+        s.split_mode = SplitMode::AnyPercent;
+        let mut sc = Scenario::new(s);
+        let mut calls = Vec::new();
+        for area in AREAS {
+            calls.extend(sc.area(area.id));
+        }
+        // start suppressed; only mandatory areas split; finish entry adds the
+        // Exit-only extra (recorded from current code)
+        assert_eq!(calls, vec![Call::Split; 78]);
+    }
+
+    #[test]
+    fn golden_run_boundaries_and_pause() {
+        let mut sc = Scenario::new(settings_full());
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]);
+
+        // Pause/resume: no state wipe, guard intact, no calls.
+        sc.script(TimerState::Paused);
+        assert!(sc.tick().is_empty());
+        sc.script(TimerState::Running);
+        assert!(sc.tick().is_empty());
+        assert!(sc.area("G1_town").is_empty());
+
+        // Reset (Running -> NotRunning) wipes; NotRunning -> Running is a
+        // fresh start and wipes again (no hook exists in Exit mode).
+        sc.script(TimerState::NotRunning);
+        assert!(sc.tick().is_empty());
+        sc.script(TimerState::Running);
+        assert!(sc.tick().is_empty());
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]); // wiped -> splits
+    }
+
+    #[test]
+    fn golden_fixture_replay() {
+        let mut sc = Scenario::new(settings_full());
+        let mut out = String::new();
+        for line in include_str!("../testdata/real-run.txt").lines() {
+            if line.starts_with('#') {
+                continue;
+            }
+            for call in sc.line(line) {
+                out.push_str(match call {
+                    Call::Start => "start\n",
+                    Call::Split => "split\n",
+                });
+            }
+        }
+        assert_eq!(out, include_str!("../testdata/real-run.golden"));
     }
 }
