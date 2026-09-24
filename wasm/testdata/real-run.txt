@@ -1,0 +1,416 @@
+# PoE2 autosplitter fixture: one real play session, byte-verbatim.
+#
+# Source : logs/Client.txt (CRLF line endings preserved as in the log)
+# Session: log lines 358746-362824 = 2025-10-11 15:08 -> 2025-10-12 01:57
+#          175 area events / 395 structural lines; 64 distinct ids
+#          (60 tracked + 4 untracked)
+# Recipe (re-runnable; the session range is append-only-stable):
+#   sed -n '358746,362824p' Client.txt \
+#     | grep -E 'Generating level [0-9]+ area "|Got Instance Details|is now level [0-9]+\r?$'
+#   - only those three structural types are kept (no chat/account lines)
+#   - level lines: the character name between "] " and " is now level " is
+#     replaced with TestChar (parse_line only rfinds the marker)
+# Replay convention: lines starting with "#" are comments, not fed to
+# handle_line; everything else is fed in order, byte-verbatim.
+# Extras appended at the end, marked below.
+2025/10/11 15:10:21 1372454 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:10:21 1372614 2caa1a34 [DEBUG Client 448] Generating level 1 area "G1_1" with seed 2708865591
+2025/10/11 15:13:36 1567527 3ef232c2 [INFO Client 448] TestChar is now level 2
+2025/10/11 15:13:50 1581612 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:13:50 1581770 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 15:15:21 1672402 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:15:21 1672561 2caa1a34 [DEBUG Client 448] Generating level 2 area "G1_2" with seed 1730118721
+2025/10/11 15:18:57 1889023 3ef232c2 [INFO Client 448] TestChar is now level 3
+2025/10/11 15:20:15 1966201 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:20:15 1966351 2caa1a34 [DEBUG Client 448] Generating level 4 area "G1_4" with seed 3710247192
+2025/10/11 15:21:34 2045993 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:21:35 2046150 2caa1a34 [DEBUG Client 448] Generating level 6 area "G1_6" with seed 4046533541
+2025/10/11 15:21:43 2054409 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:21:43 2054554 2caa1a34 [DEBUG Client 448] Generating level 4 area "G1_4" with seed 3710247192
+2025/10/11 15:24:07 2198682 3ef232c2 [INFO Client 448] TestChar is now level 4
+2025/10/11 15:27:19 2390802 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:27:19 2390955 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 15:30:24 2575790 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:30:24 2575949 2caa1a34 [DEBUG Client 448] Generating level 4 area "G1_4" with seed 3710247192
+2025/10/11 15:32:07 2678831 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:32:07 2678992 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 15:37:01 2972320 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:37:01 2972492 2caa1a34 [DEBUG Client 448] Generating level 4 area "G1_4" with seed 3710247192
+2025/10/11 15:37:28 3000011 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:37:29 3000177 2caa1a34 [DEBUG Client 448] Generating level 5 area "G1_5" with seed 2262809989
+2025/10/11 15:38:22 3053901 3ef232c2 [INFO Client 448] TestChar is now level 5
+2025/10/11 15:41:24 3236059 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:41:25 3236225 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 15:41:43 3254740 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:41:43 3254906 2caa1a34 [DEBUG Client 448] Generating level 5 area "G1_5" with seed 2262809989
+2025/10/11 15:45:28 3479891 3ef232c2 [INFO Client 448] TestChar is now level 6
+2025/10/11 15:50:16 3767152 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:50:16 3767298 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 15:51:17 3828889 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:51:17 3829047 2caa1a34 [DEBUG Client 448] Generating level 4 area "G1_4" with seed 3710247192
+2025/10/11 15:54:05 3996816 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:54:05 3996975 2caa1a34 [DEBUG Client 448] Generating level 2 area "G1_2" with seed 1326611925
+2025/10/11 15:54:17 4008201 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:54:17 4008366 2caa1a34 [DEBUG Client 448] Generating level 3 area "G1_3" with seed 493720336
+2025/10/11 15:57:02 4174047 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 15:57:03 4174208 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 16:01:49 4460177 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:01:49 4460327 2caa1a34 [DEBUG Client 448] Generating level 6 area "G1_6" with seed 487287289
+2025/10/11 16:04:41 4632309 3ef232c2 [INFO Client 448] TestChar is now level 7
+2025/10/11 16:08:20 4851464 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:08:20 4851621 2caa1a34 [DEBUG Client 448] Generating level 7 area "G1_7" with seed 813586163
+2025/10/11 16:12:30 5101740 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:12:30 5101891 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 16:13:29 5160244 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:13:29 5160386 2caa1a34 [DEBUG Client 448] Generating level 7 area "G1_7" with seed 813586163
+2025/10/11 16:17:11 5382817 3ef232c2 [INFO Client 448] TestChar is now level 8
+2025/10/11 16:22:20 5691269 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:22:20 5691447 2caa1a34 [DEBUG Client 448] Generating level 8 area "G1_9" with seed 2711108718
+2025/10/11 16:25:03 5854632 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:25:03 5854807 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 16:25:15 5866971 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:25:16 5867125 2caa1a34 [DEBUG Client 448] Generating level 7 area "G1_7" with seed 686944415
+2025/10/11 16:25:24 5875974 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:25:25 5876132 2caa1a34 [DEBUG Client 448] Generating level 8 area "G1_9" with seed 3461697200
+2025/10/11 16:25:46 5897605 3ef232c2 [INFO Client 448] TestChar is now level 9
+2025/10/11 16:30:53 6204802 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:30:53 6204951 2caa1a34 [DEBUG Client 448] Generating level 7 area "G1_7" with seed 686944415
+2025/10/11 16:31:22 6233373 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:31:22 6233546 2caa1a34 [DEBUG Client 448] Generating level 9 area "G1_8" with seed 1210743045
+2025/10/11 16:31:28 6239884 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:31:28 6240032 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 16:35:31 6482300 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:35:31 6482469 2caa1a34 [DEBUG Client 448] Generating level 9 area "G1_8" with seed 1210743045
+2025/10/11 16:37:03 6574999 3ef232c2 [INFO Client 448] TestChar is now level 10
+2025/10/11 16:39:13 6705050 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:39:14 6705182 2caa1a34 [DEBUG Client 448] Generating level 7 area "G1_7" with seed 686944415
+2025/10/11 16:41:20 6831855 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:41:20 6831993 2caa1a34 [DEBUG Client 448] Generating level 10 area "G1_11" with seed 3238419748
+2025/10/11 16:41:38 6850038 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:41:39 6850176 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 16:43:18 6949326 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:43:18 6949473 2caa1a34 [DEBUG Client 448] Generating level 10 area "G1_11" with seed 3238419748
+2025/10/11 16:47:00 7171942 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:47:01 7172117 2caa1a34 [DEBUG Client 448] Generating level 10 area "G1_11" with seed 3238419748
+2025/10/11 16:50:45 7397014 3ef232c2 [INFO Client 448] TestChar is now level 11
+2025/10/11 16:55:45 7696122 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:55:45 7696293 2caa1a34 [DEBUG Client 448] Generating level 12 area "G1_13_1" with seed 1482134419
+2025/10/11 16:56:00 7711954 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:56:01 7712107 2caa1a34 [DEBUG Client 448] Generating level 10 area "G1_11" with seed 3238419748
+2025/10/11 16:56:12 7723973 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 16:56:13 7724131 2caa1a34 [DEBUG Client 448] Generating level 11 area "G1_12" with seed 543076796
+2025/10/11 16:58:15 7846724 3ef232c2 [INFO Client 448] TestChar is now level 12
+2025/10/11 17:04:56 8247563 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:04:56 8247742 2caa1a34 [DEBUG Client 448] Generating level 11 area "G1_12" with seed 543076796
+2025/10/11 17:05:36 8287881 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:05:36 8288034 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 17:08:07 8438951 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:08:08 8439139 2caa1a34 [DEBUG Client 448] Generating level 11 area "G1_12" with seed 543076796
+2025/10/11 17:11:55 8666358 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:11:55 8666522 2caa1a34 [DEBUG Client 448] Generating level 11 area "G1_12" with seed 543076796
+2025/10/11 17:14:23 8815101 3ef232c2 [INFO Client 448] TestChar is now level 13
+2025/10/11 17:15:03 8854406 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:15:03 8854555 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 17:17:19 8990213 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:17:19 8990376 2caa1a34 [DEBUG Client 448] Generating level 12 area "G1_13_1" with seed 3615428399
+2025/10/11 17:20:32 9183695 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:20:32 9183845 2caa1a34 [DEBUG Client 448] Generating level 13 area "G1_13_2" with seed 2551548089
+2025/10/11 17:21:33 9244774 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:21:33 9244939 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 17:22:51 9322218 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:22:51 9322384 2caa1a34 [DEBUG Client 448] Generating level 13 area "G1_13_2" with seed 2551548089
+2025/10/11 17:26:39 9550451 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:26:39 9550631 2caa1a34 [DEBUG Client 448] Generating level 14 area "G1_14" with seed 3518918126
+2025/10/11 17:26:50 9561703 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:26:50 9561857 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 17:29:25 9716140 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:29:25 9716290 2caa1a34 [DEBUG Client 448] Generating level 14 area "G1_14" with seed 3518918126
+2025/10/11 17:29:50 9741889 3ef232c2 [INFO Client 448] TestChar is now level 14
+2025/10/11 17:33:51 9982227 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:33:51 9982419 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_15" with seed 3203870392
+2025/10/11 17:35:23 10074331 3ef232c2 [INFO Client 448] TestChar is now level 15
+2025/10/11 17:38:01 10232552 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:38:01 10232696 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 17:39:02 10294024 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:39:03 10294189 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_15" with seed 3203870392
+2025/10/11 17:44:47 10638384 3ef232c2 [INFO Client 448] TestChar is now level 16
+2025/10/11 17:49:09 10901119 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:49:10 10901265 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_15" with seed 3203870392
+2025/10/11 17:52:52 11123644 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:52:52 11123807 2caa1a34 [DEBUG Client 448] Generating level 15 area "G1_town" with seed 1
+2025/10/11 17:55:58 11309216 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 17:55:58 11309389 2caa1a34 [DEBUG Client 448] Generating level 16 area "G2_1" with seed 1038862678
+2025/10/11 18:00:07 11558911 3ef232c2 [INFO Client 448] TestChar is now level 17
+2025/10/11 18:00:39 11591086 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:00:40 11591255 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 18:02:33 11704429 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:02:33 11704597 2caa1a34 [DEBUG Client 448] Generating level 17 area "G2_10_1" with seed 289039865
+2025/10/11 18:06:25 11936609 3ef232c2 [INFO Client 448] TestChar is now level 18
+2025/10/11 18:07:24 11995637 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:07:24 11995807 2caa1a34 [DEBUG Client 448] Generating level 18 area "G2_10_2" with seed 321313434
+2025/10/11 18:09:46 12137291 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:09:46 12137443 2caa1a34 [DEBUG Client 448] Generating level 18 area "G2_10_2" with seed 321313434
+2025/10/11 18:12:12 12283438 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:12:12 12283586 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 18:13:16 12347409 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:13:16 12347570 2caa1a34 [DEBUG Client 448] Generating level 18 area "G2_10_2" with seed 321313434
+2025/10/11 18:14:23 12414931 3ef232c2 [INFO Client 448] TestChar is now level 19
+2025/10/11 18:14:44 12435156 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:14:44 12435296 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 18:20:25 12776670 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:20:25 12776813 2caa1a34 [DEBUG Client 448] Generating level 20 area "G2_3a" with seed 1732548692
+2025/10/11 18:20:40 12791385 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:20:40 12791535 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 18:21:06 12818119 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:21:07 12818272 2caa1a34 [DEBUG Client 448] Generating level 19 area "G2_2" with seed 4037427130
+2025/10/11 18:32:46 13517756 3ef232c2 [INFO Client 448] TestChar is now level 20
+2025/10/11 18:33:53 13584407 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:33:53 13584571 2caa1a34 [DEBUG Client 448] Generating level 20 area "G2_3" with seed 2560347646
+2025/10/11 18:40:09 13960728 3ef232c2 [INFO Client 448] TestChar is now level 21
+2025/10/11 18:41:30 14041443 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:41:30 14041607 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 18:42:50 14121604 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:42:50 14121779 2caa1a34 [DEBUG Client 448] Generating level 20 area "G2_3" with seed 2560347646
+2025/10/11 18:44:51 14243114 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:44:52 14243276 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 18:45:36 14287350 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:45:36 14287522 2caa1a34 [DEBUG Client 448] Generating level 21 area "G2_4_1" with seed 2908412093
+2025/10/11 18:59:18 15109772 3ef232c2 [INFO Client 448] TestChar is now level 22
+2025/10/11 18:59:37 15128278 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 18:59:37 15128439 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 19:07:43 15614267 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:07:43 15614422 2caa1a34 [DEBUG Client 448] Generating level 21 area "G2_4_1" with seed 2908412093
+2025/10/11 19:08:20 15651682 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:08:20 15651837 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 19:10:22 15774020 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:10:23 15774198 2caa1a34 [DEBUG Client 448] Generating level 21 area "G2_4_1" with seed 2908412093
+2025/10/11 19:17:28 16199697 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:17:28 16199855 2caa1a34 [DEBUG Client 448] Generating level 22 area "G2_4_2" with seed 1955879432
+2025/10/11 19:19:16 16307362 3ef232c2 [INFO Client 448] TestChar is now level 23
+2025/10/11 19:21:50 16461796 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:21:50 16461961 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 19:24:32 16623586 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:24:32 16623777 2caa1a34 [DEBUG Client 448] Generating level 22 area "G2_4_2" with seed 1955879432
+2025/10/11 19:26:03 16714213 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:26:03 16714384 2caa1a34 [DEBUG Client 448] Generating level 23 area "G2_4_3" with seed 26240625
+2025/10/11 19:34:43 17234627 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:34:43 17234787 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 19:42:00 17671539 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:42:00 17671691 2caa1a34 [DEBUG Client 448] Generating level 23 area "G2_4_3" with seed 26240625
+2025/10/11 19:42:29 17700300 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:42:29 17700453 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 19:43:33 17764223 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:43:33 17764381 2caa1a34 [DEBUG Client 448] Generating level 23 area "G2_4_3" with seed 26240625
+2025/10/11 19:43:44 17775927 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:43:44 17776072 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 19:44:09 17801058 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:44:10 17801229 2caa1a34 [DEBUG Client 448] Generating level 24 area "G2_5_1" with seed 2729898654
+2025/10/11 19:46:37 17948746 3ef232c2 [INFO Client 448] TestChar is now level 24
+2025/10/11 19:49:15 18106179 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:49:15 18106339 2caa1a34 [DEBUG Client 448] Generating level 25 area "G2_5_2" with seed 995232322
+2025/10/11 19:49:25 18116244 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:49:25 18116421 2caa1a34 [DEBUG Client 448] Generating level 24 area "G2_5_1" with seed 2729898654
+2025/10/11 19:50:49 18200891 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:50:49 18201045 2caa1a34 [DEBUG Client 448] Generating level 22 area "Abyss_Intro" with seed 787823872
+2025/10/11 19:52:56 18327815 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:52:56 18327979 2caa1a34 [DEBUG Client 448] Generating level 22 area "Abyss_Hub" with seed 586142927
+2025/10/11 19:55:55 18506216 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:55:55 18506377 2caa1a34 [DEBUG Client 448] Generating level 25 area "G2_5_2" with seed 995232322
+2025/10/11 19:57:45 18616665 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 19:57:45 18616829 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 20:01:31 18842992 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:01:31 18843175 2caa1a34 [DEBUG Client 448] Generating level 26 area "G2_6" with seed 3753450821
+2025/10/11 20:02:06 18878163 3ef232c2 [INFO Client 448] TestChar is now level 25
+2025/10/11 20:06:56 19168158 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:06:57 19168323 2caa1a34 [DEBUG Client 448] Generating level 27 area "G2_7" with seed 2795037540
+2025/10/11 20:13:46 19577769 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:13:46 19577915 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 20:17:55 19826333 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:17:55 19826508 2caa1a34 [DEBUG Client 448] Generating level 28 area "G2_8" with seed 2067684
+2025/10/11 20:18:16 19847736 3ef232c2 [INFO Client 448] TestChar is now level 26
+2025/10/11 20:23:16 20148146 3ef232c2 [INFO Client 448] TestChar is now level 27
+2025/10/11 20:24:56 20247496 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:24:56 20247648 2caa1a34 [DEBUG Client 448] Generating level 29 area "G2_9_1" with seed 364480746
+2025/10/11 20:25:06 20257772 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:25:06 20257911 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 20:27:39 20411091 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:27:40 20411275 2caa1a34 [DEBUG Client 448] Generating level 29 area "G2_9_1" with seed 364480746
+2025/10/11 20:29:30 20521387 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:29:30 20521546 2caa1a34 [DEBUG Client 448] Generating level 30 area "G2_9_2" with seed 3410981120
+2025/10/11 20:33:06 20737542 3ef232c2 [INFO Client 448] TestChar is now level 28
+2025/10/11 20:34:43 20834387 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 20:34:43 20834529 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 21:35:34 24485269 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 21:35:34 24485432 2caa1a34 [DEBUG Client 448] Generating level 31 area "G2_12_1" with seed 4211956028
+2025/10/11 21:39:59 24750576 3ef232c2 [INFO Client 448] TestChar is now level 29
+2025/10/11 21:40:17 24768789 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 21:40:17 24768969 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_12_2" with seed 449992479
+2025/10/11 21:43:59 24991076 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 21:44:00 24991249 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 21:47:56 25227982 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 21:47:56 25228153 2caa1a34 [DEBUG Client 448] Generating level 22 area "G2_13" with seed 1451136431
+2025/10/11 21:49:14 25305415 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 21:49:14 25305591 2caa1a34 [DEBUG Client 448] Generating level 22 area "Abyss_Hub" with seed 3360906916
+2025/10/11 21:50:07 25358544 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 21:50:07 25358708 2caa1a34 [DEBUG Client 448] Generating level 22 area "G2_13" with seed 795051235
+2025/10/11 21:50:24 25375644 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 21:50:24 25375803 2caa1a34 [DEBUG Client 448] Generating level 22 area "Sanctum_1_Foyer_1" with seed 3230252470
+2025/10/11 22:05:53 26304668 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:05:53 26304831 2caa1a34 [DEBUG Client 448] Generating level 22 area "G2_13" with seed 1385295089
+2025/10/11 22:06:14 26325299 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:06:14 26325457 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_12_2" with seed 517179108
+2025/10/11 22:06:26 26337658 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:06:26 26337826 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 22:08:55 26487222 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:08:56 26487392 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_12_2" with seed 517179108
+2025/10/11 22:10:12 26563363 3ef232c2 [INFO Client 448] TestChar is now level 30
+2025/10/11 22:14:49 26840516 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:14:49 26840668 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_12_2" with seed 1293615445
+2025/10/11 22:17:03 26974936 3ef232c2 [INFO Client 448] TestChar is now level 31
+2025/10/11 22:20:57 27208689 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:20:57 27208846 2caa1a34 [DEBUG Client 448] Generating level 32 area "G2_town" with seed 1
+2025/10/11 22:23:40 27371347 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:23:40 27371522 2caa1a34 [DEBUG Client 448] Generating level 33 area "G3_1" with seed 778726820
+2025/10/11 22:31:41 27853122 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:31:42 27853312 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 22:33:56 27987349 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:33:56 27987501 2caa1a34 [DEBUG Client 448] Generating level 34 area "G3_3" with seed 560105080
+2025/10/11 22:35:42 28093487 3ef232c2 [INFO Client 448] TestChar is now level 32
+2025/10/11 22:42:40 28512049 3ef232c2 [INFO Client 448] TestChar is now level 33
+2025/10/11 22:43:18 28549934 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:43:18 28550093 2caa1a34 [DEBUG Client 448] Generating level 34 area "G3_3" with seed 560105080
+2025/10/11 22:48:09 28841119 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:48:10 28841264 2caa1a34 [DEBUG Client 448] Generating level 35 area "G3_4" with seed 696192410
+2025/10/11 22:49:47 28939215 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:49:48 28939404 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 22:53:09 29140944 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:53:09 29141145 2caa1a34 [DEBUG Client 448] Generating level 34 area "G3_3" with seed 560105080
+2025/10/11 22:53:27 29158286 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:53:27 29158419 2caa1a34 [DEBUG Client 448] Generating level 35 area "G3_2_1" with seed 3505602840
+2025/10/11 22:54:45 29236546 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:54:45 29236718 2caa1a34 [DEBUG Client 448] Generating level 36 area "G3_5" with seed 2986323270
+2025/10/11 22:54:59 29250990 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:54:59 29251153 2caa1a34 [DEBUG Client 448] Generating level 35 area "G3_2_1" with seed 3505602840
+2025/10/11 22:57:05 29377207 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 22:57:06 29377339 2caa1a34 [DEBUG Client 448] Generating level 36 area "G3_7" with seed 2663917428
+2025/10/11 22:57:59 29430566 3ef232c2 [INFO Client 448] TestChar is now level 34
+2025/10/11 23:01:53 29664522 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:01:53 29664683 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 23:05:25 29876778 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:05:25 29876938 2caa1a34 [DEBUG Client 448] Generating level 36 area "G3_5" with seed 2986323270
+2025/10/11 23:08:08 30039464 3ef232c2 [INFO Client 448] TestChar is now level 35
+2025/10/11 23:11:42 30253364 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:11:42 30253513 2caa1a34 [DEBUG Client 448] Generating level 38 area "G3_10_Airlock" with seed 1472868910
+2025/10/11 23:11:54 30266051 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:11:54 30266206 2caa1a34 [DEBUG Client 448] Generating level 36 area "G3_5" with seed 2986323270
+2025/10/11 23:14:48 30439940 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:14:48 30440119 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 23:16:24 30535427 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:16:24 30535611 2caa1a34 [DEBUG Client 448] Generating level 36 area "G3_5" with seed 2986323270
+2025/10/11 23:16:38 30549982 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:16:38 30550139 2caa1a34 [DEBUG Client 448] Generating level 37 area "G3_6_1" with seed 1797401415
+2025/10/11 23:20:41 30792537 3ef232c2 [INFO Client 448] TestChar is now level 36
+2025/10/11 23:25:15 31066801 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:25:15 31066973 2caa1a34 [DEBUG Client 448] Generating level 38 area "G3_6_2" with seed 3168081537
+2025/10/11 23:30:55 31406949 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:30:55 31407090 2caa1a34 [DEBUG Client 448] Generating level 38 area "G3_6_2" with seed 3168081537
+2025/10/11 23:32:18 31490041 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:32:18 31490209 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 23:35:24 31675883 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:35:24 31676065 2caa1a34 [DEBUG Client 448] Generating level 38 area "G3_6_2" with seed 3168081537
+2025/10/11 23:35:37 31688588 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:35:37 31688727 2caa1a34 [DEBUG Client 448] Generating level 35 area "G3_2_1" with seed 1680711455
+2025/10/11 23:36:04 31715314 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:36:04 31715468 2caa1a34 [DEBUG Client 448] Generating level 39 area "G3_2_2" with seed 4025400607
+2025/10/11 23:36:49 31761217 3ef232c2 [INFO Client 448] TestChar is now level 37
+2025/10/11 23:43:13 32144636 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:43:13 32144797 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 23:44:36 32228241 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:44:37 32228398 2caa1a34 [DEBUG Client 448] Generating level 40 area "G3_8" with seed 2269418490
+2025/10/11 23:46:13 32324311 3ef232c2 [INFO Client 448] TestChar is now level 38
+2025/10/11 23:47:38 32410167 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:47:39 32410332 2caa1a34 [DEBUG Client 448] Generating level 41 area "G3_11" with seed 583495056
+2025/10/11 23:51:08 32619343 3ef232c2 [INFO Client 448] TestChar is now level 39
+2025/10/11 23:52:27 32698830 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:52:27 32699012 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 23:54:57 32848447 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:54:57 32848623 2caa1a34 [DEBUG Client 448] Generating level 41 area "G3_11" with seed 583495056
+2025/10/11 23:58:13 33044679 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:58:13 33044838 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/11 23:59:17 33109042 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:59:17 33109192 2caa1a34 [DEBUG Client 448] Generating level 42 area "G3_12" with seed 2759102585
+2025/10/11 23:59:39 33130640 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/11 23:59:39 33130805 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 00:00:04 33155659 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:00:04 33155851 2caa1a34 [DEBUG Client 448] Generating level 38 area "G3_10_Airlock" with seed 492820643
+2025/10/12 00:02:51 33322522 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:02:51 33322677 2caa1a34 [DEBUG Client 448] Generating level 38 area "G3_10" with seed 1697880615
+2025/10/12 00:06:06 33518189 3ef232c2 [INFO Client 448] TestChar is now level 40
+2025/10/12 00:12:59 33930536 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:12:59 33930679 2caa1a34 [DEBUG Client 448] Generating level 38 area "G3_10_Airlock" with seed 492820643
+2025/10/12 00:13:20 33952109 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:13:20 33952257 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 00:14:44 34035597 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:14:44 34035758 2caa1a34 [DEBUG Client 448] Generating level 42 area "G3_12" with seed 3201866749
+2025/10/12 00:19:02 34293444 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:19:02 34293608 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 00:21:01 34412954 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:21:01 34413110 2caa1a34 [DEBUG Client 448] Generating level 43 area "G3_14" with seed 1583113010
+2025/10/12 00:23:05 34536362 3ef232c2 [INFO Client 448] TestChar is now level 41
+2025/10/12 00:25:26 34677393 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:25:26 34677564 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 00:27:46 34817998 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:27:46 34818160 2caa1a34 [DEBUG Client 448] Generating level 43 area "G3_14" with seed 1583113010
+2025/10/12 00:30:56 35007672 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:30:56 35007841 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_16" with seed 1331177874
+2025/10/12 00:34:03 35194945 3ef232c2 [INFO Client 448] TestChar is now level 42
+2025/10/12 00:37:09 35380925 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:37:09 35381090 2caa1a34 [DEBUG Client 448] Generating level 45 area "G3_17" with seed 3769363192
+2025/10/12 00:40:05 35556338 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:40:05 35556504 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 00:43:09 35740455 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:43:09 35740612 2caa1a34 [DEBUG Client 448] Generating level 45 area "G3_17" with seed 3769363192
+2025/10/12 00:45:34 35885603 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:45:34 35885785 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 00:48:03 36035051 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:48:03 36035215 2caa1a34 [DEBUG Client 448] Generating level 53 area "G4_town" with seed 1
+2025/10/12 00:50:18 36169678 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:50:18 36169827 2caa1a34 [DEBUG Client 448] Generating level 40 area "G3_8" with seed 46886274
+2025/10/12 00:52:20 36291584 3ef232c2 [INFO Client 448] TestChar is now level 43
+2025/10/12 00:55:17 36468976 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 00:55:17 36469124 2caa1a34 [DEBUG Client 448] Generating level 41 area "G3_9" with seed 2844722729
+2025/10/12 01:04:36 37028219 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:04:37 37028383 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 01:05:48 37099435 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:05:48 37099596 2caa1a34 [DEBUG Client 448] Generating level 41 area "G3_9" with seed 2844722729
+2025/10/12 01:06:01 37112481 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:06:01 37112641 2caa1a34 [DEBUG Client 448] Generating level 44 area "G3_town" with seed 1
+2025/10/12 01:07:57 37228335 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:07:57 37228490 2caa1a34 [DEBUG Client 448] Generating level 53 area "G4_town" with seed 1
+2025/10/12 01:16:25 37736567 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:16:25 37736716 2caa1a34 [DEBUG Client 448] Generating level 46 area "G4_1_1" with seed 3218160514
+2025/10/12 01:19:19 37911151 3ef232c2 [INFO Client 448] TestChar is now level 44
+2025/10/12 01:23:02 38133493 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:23:02 38133668 2caa1a34 [DEBUG Client 448] Generating level 47 area "G4_1_2" with seed 500070337
+2025/10/12 01:24:16 38207413 3ef232c2 [INFO Client 448] TestChar is now level 45
+2025/10/12 01:27:27 38398443 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:27:27 38398618 2caa1a34 [DEBUG Client 448] Generating level 46 area "G4_1_1" with seed 3218160514
+2025/10/12 01:28:04 38436239 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:28:05 38436395 2caa1a34 [DEBUG Client 448] Generating level 47 area "G4_4_1" with seed 162089694
+2025/10/12 01:32:56 38727673 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:32:56 38727824 2caa1a34 [DEBUG Client 448] Generating level 53 area "G4_town" with seed 1
+2025/10/12 01:43:38 39369739 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:43:38 39369915 2caa1a34 [DEBUG Client 448] Generating level 47 area "G4_4_1" with seed 162089694
+2025/10/12 01:47:31 39602769 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:47:31 39602937 2caa1a34 [DEBUG Client 448] Generating level 48 area "G4_4_2" with seed 1891539056
+2025/10/12 01:49:11 39703030 3ef232c2 [INFO Client 448] TestChar is now level 46
+2025/10/12 01:54:28 40019921 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:54:28 40020089 2caa1a34 [DEBUG Client 448] Generating level 51 area "G4_4_3" with seed 3894294821
+2025/10/12 01:55:44 40096107 2d8e9f5d [DEBUG Client 448] Got Instance Details from login server
+2025/10/12 01:55:44 40096266 2caa1a34 [DEBUG Client 448] Generating level 53 area "G4_town" with seed 1
+# --- curated extras pulled from elsewhere in the log ---
+2025/01/19 21:57:06 6933437 2caa1679 [DEBUG Client 17188] Generating level 1 area "G1_1" with seed 1622221389
+2025/01/19 22:00:57 7164359 2caa1679 [DEBUG Client 17188] Generating level 1 area "G1_1" with seed 1622221389
+# extra pair (same-seed reload (G1_1 -> G1_1)) pulled verbatim from log lines 98690,98765 (session lacked it)
+# --- hand-written malformed-tail level line (none exists in history) ---
+2025/10/12 01:49:11 39703030 3ef232c2 [INFO Client 448] TestChar is now level 11 soon
