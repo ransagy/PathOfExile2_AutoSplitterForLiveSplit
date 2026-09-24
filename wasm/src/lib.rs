@@ -183,6 +183,17 @@ enum SplitMode {
     Custom,
 }
 
+/// Which zone a segment's time is attributed to: the one you left (Exit)
+/// or the one you entered (Entry).
+#[derive(Gui, Clone, Copy, PartialEq, Eq)]
+enum SplitAttribution {
+    /// Segment time goes to the zone you left (original behaviour)
+    #[default]
+    Exit,
+    /// Segment time goes to the zone you entered
+    Entry,
+}
+
 #[derive(Gui)]
 struct Settings {
     _general: Title,
@@ -197,6 +208,10 @@ struct Settings {
 
     /// Split mode
     split_mode: SplitMode,
+
+    /// Which zone a segment's time is attributed to: the one you left (Exit)
+    /// or the one you entered (Entry).
+    split_attribution: SplitAttribution,
 
     /// Enable auto splitting
     #[default = true]
@@ -558,7 +573,16 @@ fn xml_unescape(s: &str) -> String {
 /// clear progress when a run truly starts or is reset. Pause/resume must NOT
 /// count - it used to wipe encountered-areas on every resume. Unknown reports
 /// are ignored entirely (no transition evaluated, prev unchanged).
-fn on_timer_tick(prev_timer_state: &mut TimerState, state: &mut RunState) {
+///
+/// In Entry mode the fresh-start point below owns the segment-1 split (D2).
+fn on_timer_tick(
+    settings: &Settings,
+    triggers: &SplitsTriggers,
+    prev_timer_state: &mut TimerState,
+    state: &mut RunState,
+    last_area: &mut Option<&'static Area>,
+    start_split_done: &mut bool,
+) {
     let current_timer_state = timer::state();
     if current_timer_state != TimerState::Unknown {
         let prev = *prev_timer_state;
@@ -572,6 +596,53 @@ fn on_timer_tick(prev_timer_state: &mut TimerState, state: &mut RunState) {
             ));
             state.clear();
         }
+        // Attempt-scoped locals reset on the run boundary only (log-path and
+        // Custom-trigger changes clear them in main; every Ended tick below
+        // covers ending without a reset). A fresh start must NOT clear them:
+        // the hook needs to know where the player stands, and every path into
+        // a fresh start (fresh_reset, Ended) has already wiped the previous
+        // run's values.
+        if fresh_reset {
+            *last_area = None;
+            *start_split_done = false;
+        }
+        if current_timer_state == TimerState::Ended {
+            // Level-triggered: the player can leave to character select (no
+            // area event) and press start before any reset - the stale finish
+            // area must not be marked encountered in the next run.
+            *last_area = None;
+            *start_split_done = false;
+        }
+
+        // Fresh-start hook: the ONLY source of the segment-1 split in Entry
+        // mode - the zone entry naming segment 1 happens before the timer
+        // starts, so no area event can complete it (D2).
+        if fresh_start
+            && settings.split_attribution == SplitAttribution::Entry
+            && settings.auto_split
+            && settings.split_mode != SplitMode::Level
+            && !*start_split_done
+        {
+            *start_split_done = true;
+
+            // Split only where this mode splits areas at all: with no current
+            // zone (char-select start) or an active-set one. Level,
+            // AnyPercent-optional and Custom-absent never split from the
+            // hook; auto_split was checked above (the hook lives in the main
+            // loop, outside handle_line's guards). (`Option<&Area>` is Copy,
+            // so filtering doesn't move the local.)
+            let active = (*last_area).filter(|a| in_active_set(a, settings.split_mode, triggers));
+            if (*last_area).is_none() || active.is_some() {
+                timer::split(); // fires even when last_area is None (char-select start)
+                asr::print_message("[dbg] split: run start (Entry)");
+                if let Some(area) = active {
+                    // Re-guard the standing zone: fresh_start's state.clear()
+                    // just wiped the guard its entry had inserted.
+                    state.encountered_areas.insert(area.id.to_string());
+                }
+            }
+        }
+
         *prev_timer_state = current_timer_state;
     }
 }
@@ -585,6 +656,12 @@ async fn main() {
     let mut prev_timer_state = timer::state();
     let mut triggers = SplitsTriggers::new();
     let mut mismatch_warned = false;
+    // Attempt-scoped runtime state (never persisted; re-learned from the log
+    // each session): where the player last was (table-tracked area only) and
+    // whether this run's segment-1 split already happened. Cleared together
+    // on every reconfiguration and run boundary - see on_timer_tick.
+    let mut last_area: Option<&'static Area> = None;
+    let mut start_split_done = false;
 
     loop {
         settings.update();
@@ -592,6 +669,8 @@ async fn main() {
         // React to the log path changing at runtime.
         if tail.sync_path(settings.client_log.path.as_str()) {
             state.clear();
+            last_area = None;
+            start_split_done = false;
         }
         // In Custom mode, keep the trigger set in sync with the splits file.
         // Other modes never read it, so skip the per-tick stat entirely.
@@ -599,6 +678,8 @@ async fn main() {
             && triggers.update(settings.splits_file.path.as_str())
         {
             state.clear();
+            last_area = None;
+            start_split_done = false;
         }
 
         // Gentle one-shot hint for the silent failure mode: a configured
@@ -614,10 +695,22 @@ async fn main() {
         tail.ensure_open();
         let lines = tail.poll_lines();
 
-        on_timer_tick(&mut prev_timer_state, &mut state);
+        on_timer_tick(
+            &settings,
+            &triggers,
+            &mut prev_timer_state,
+            &mut state,
+            &mut last_area,
+            &mut start_split_done,
+        );
 
         for line in &lines {
-            handle_line(line, &settings, &triggers, &mut state);
+            // handle_line hands back the area it saw; the loop tracks where
+            // the player is even when no split fired (start area, guarded
+            // re-entry). Unknown IDs and non-area events keep the old value.
+            if let Some(area) = handle_line(line, &settings, &triggers, &mut state) {
+                last_area = Some(area);
+            }
         }
         if !lines.is_empty() && settings.debug_log {
             asr::print_message(&format!("[dbg] +{} new log lines", lines.len()));
@@ -627,14 +720,30 @@ async fn main() {
     }
 }
 
+/// Whether this mode's active split set contains the area. Shared by
+/// `handle_line`'s normal path and the fresh-start hook in `on_timer_tick`
+/// so the two can never drift apart.
+fn in_active_set(area: &Area, mode: SplitMode, triggers: &SplitsTriggers) -> bool {
+    match mode {
+        SplitMode::Full => true,
+        SplitMode::AnyPercent => area.mandatory,
+        SplitMode::Level => false,
+        SplitMode::Custom => triggers.ids.contains(area.id),
+    }
+}
+
+/// Processes one log line. Returns the known area the line placed the player
+/// in (every known-area path, including the start branch) so the caller can
+/// track `last_area`; `None` for auto-split-off, unknown IDs and non-area
+/// events.
 fn handle_line(
     line: &str,
     settings: &Settings,
     triggers: &SplitsTriggers,
     state: &mut RunState,
-) {
+) -> Option<&'static Area> {
     if !settings.auto_split {
-        return;
+        return None;
     }
 
     match parse_line(line) {
@@ -643,7 +752,7 @@ fn handle_line(
             // visible in log.txt instead of being silent).
             let Some(area) = AREAS.iter().find(|a| a.id == area_id) else {
                 asr::print_message(&format!("[dbg] unknown area id: {area_id} ({line})"));
-                return;
+                return None;
             };
 
             // The start area never consumes a segment, regardless of how the
@@ -656,17 +765,12 @@ fn handle_line(
                     asr::print_message("[dbg] start (The Riverbank)");
                 }
                 state.encountered_areas.insert(area_id.to_string());
-                return;
+                return Some(area);
             }
 
             // Only split if the active split set contains this area and we
             // haven't encountered it yet during this run.
-            let in_active_set = match settings.split_mode {
-                SplitMode::Full => true,
-                SplitMode::AnyPercent => area.mandatory,
-                SplitMode::Level => false,
-                SplitMode::Custom => triggers.ids.contains(area_id),
-            };
+            let in_active_set = in_active_set(area, settings.split_mode, triggers);
 
             if in_active_set && !state.encountered_areas.contains(area_id) {
                 timer::split();
@@ -683,12 +787,18 @@ fn handle_line(
             };
             if let Some(finish) = finish_area {
                 if area_id == finish {
-                    timer::split();
-                    asr::print_message("[dbg] split (finish line)");
+                    // Exit only: this extra split completes the finish-line
+                    // segment itself. Under Entry the shifted alignment means
+                    // the normal split above already ends the run at this load.
+                    if settings.split_attribution == SplitAttribution::Exit {
+                        timer::split();
+                        asr::print_message("[dbg] split (finish line)");
+                    }
                 }
             }
 
             state.encountered_areas.insert(area_id.to_string());
+            Some(area)
         }
         Event::Level(level) => {
             if settings.debug_log {
@@ -699,8 +809,9 @@ fn handle_line(
                 timer::split();
             }
             state.levels_reached.insert(level);
+            None
         }
-        Event::InstanceDetails | Event::Nothing => {}
+        Event::InstanceDetails | Event::Nothing => None,
     }
 }
 
@@ -783,6 +894,161 @@ mod test_harness {
 
     #[no_mangle]
     pub extern "C" fn runtime_print_message(_text_ptr: *const u8, _text_len: usize) {}
+
+    // ---- settings GUI registration (used by the D4 round-trip test) ------
+
+    thread_local! {
+        static SETTING_EVENTS: RefCell<Vec<String>> = RefCell::new(Vec::new());
+    }
+
+    fn record_setting(event: String) {
+        SETTING_EVENTS.with(|e| e.borrow_mut().push(event));
+    }
+
+    fn str_of(ptr: *const u8, len: usize) -> String {
+        // SAFETY: the bytes come from asr's wrappers, which pass &str slices.
+        String::from_utf8_lossy(unsafe { std::slice::from_raw_parts(ptr, len) }).into_owned()
+    }
+
+    /// Settings GUI registration calls made so far ("kind:key[:value]").
+    pub fn take_setting_events() -> Vec<String> {
+        SETTING_EVENTS.with(|e| e.borrow_mut().drain(..).collect())
+    }
+
+    // Stubs mirror `asr/src/runtime/sys.rs` declarations; return values fake
+    // an untouched host (defaults kept, no stored paths).
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_add_bool(
+        key_ptr: *const u8,
+        key_len: usize,
+        _desc_ptr: *const u8,
+        _desc_len: usize,
+        default_value: bool,
+    ) -> bool {
+        record_setting(format!("bool:{}", str_of(key_ptr, key_len)));
+        default_value
+    }
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_add_title(
+        key_ptr: *const u8,
+        key_len: usize,
+        _desc_ptr: *const u8,
+        _desc_len: usize,
+        _heading_level: u32,
+    ) {
+        record_setting(format!("title:{}", str_of(key_ptr, key_len)));
+    }
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_add_choice(
+        key_ptr: *const u8,
+        key_len: usize,
+        _desc_ptr: *const u8,
+        _desc_len: usize,
+        default_ptr: *const u8,
+        default_len: usize,
+    ) {
+        record_setting(format!(
+            "choice:{}:{}",
+            str_of(key_ptr, key_len),
+            str_of(default_ptr, default_len)
+        ));
+    }
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_add_choice_option(
+        key_ptr: *const u8,
+        key_len: usize,
+        option_ptr: *const u8,
+        option_len: usize,
+        _opt_desc_ptr: *const u8,
+        _opt_desc_len: usize,
+    ) -> bool {
+        record_setting(format!(
+            "option:{}:{}",
+            str_of(key_ptr, key_len),
+            str_of(option_ptr, option_len)
+        ));
+        false // untouched host: no option chosen yet -> default wins
+    }
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_add_file_select(
+        key_ptr: *const u8,
+        key_len: usize,
+        _desc_ptr: *const u8,
+        _desc_len: usize,
+    ) {
+        record_setting(format!("file:{}", str_of(key_ptr, key_len)));
+    }
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_add_file_select_name_filter(
+        key_ptr: *const u8,
+        key_len: usize,
+        _desc_ptr: *const u8,
+        _desc_len: usize,
+        _pattern_ptr: *const u8,
+        _pattern_len: usize,
+    ) {
+        record_setting(format!("filefilter:{}", str_of(key_ptr, key_len)));
+    }
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_set_tooltip(
+        key_ptr: *const u8,
+        key_len: usize,
+        _tooltip_ptr: *const u8,
+        _tooltip_len: usize,
+    ) {
+        record_setting(format!("tooltip:{}", str_of(key_ptr, key_len)));
+    }
+
+    // Register() loads the settings map to read back FileSelect paths: fake
+    // an empty map (non-zero handle, every key absent). Layout note: the map
+    // handle is repr(transparent) over NonZeroU64 and get() returns
+    // Option<NonZeroU64> - the stubs must match that niche, not Option<u64>.
+
+    #[no_mangle]
+    pub extern "C" fn settings_map_load() -> u64 {
+        1
+    }
+
+    #[no_mangle]
+    pub extern "C" fn settings_map_get(
+        _map: u64,
+        _key_ptr: *const u8,
+        _key_len: usize,
+    ) -> Option<std::num::NonZeroU64> {
+        None
+    }
+
+    #[no_mangle]
+    pub extern "C" fn settings_map_free(_map: u64) {}
+
+    #[no_mangle]
+    pub extern "C" fn setting_value_free(_value: u64) {}
+
+    #[no_mangle]
+    pub extern "C" fn setting_value_get_string(
+        _value: u64,
+        _buf_ptr: *mut u8,
+        _buf_len_ptr: *mut usize,
+    ) -> bool {
+        false
+    }
+
+    #[no_mangle]
+    pub extern "C" fn user_settings_add_file_select_mime_filter(
+        key_ptr: *const u8,
+        key_len: usize,
+        _mime_ptr: *const u8,
+        _mime_len: usize,
+    ) {
+        record_setting(format!("filemime:{}", str_of(key_ptr, key_len)));
+    }
 }
 
 #[cfg(test)]
@@ -804,6 +1070,7 @@ mod tests {
                 path: String::new(),
             },
             split_mode: SplitMode::Full,
+            split_attribution: SplitAttribution::Exit,
             auto_split: true,
             auto_start: false,
             debug_log: false,
@@ -943,6 +1210,7 @@ mod tests {
                 path: String::new(),
             },
             split_mode: SplitMode::Full,
+            split_attribution: SplitAttribution::Exit,
             auto_split: true,
             auto_start: false,
             debug_log: false,
@@ -966,12 +1234,16 @@ mod tests {
     // INSTANCE_LINE (defined above for the parser tests) doubles as feed.
 
     /// Drives the real decision path: lines through `handle_line`, ticks
-    /// through `on_timer_tick`, recording what reaches the timer API.
+    /// through `on_timer_tick`, recording what reaches the timer API. Mirrors
+    /// main(): `line` stores the area handle_line hands back, so `last_area`
+    /// stays faithful to what the production loop would track.
     struct Scenario {
         settings: Settings,
         triggers: SplitsTriggers,
         state: RunState,
         prev: TimerState,
+        last_area: Option<&'static Area>,
+        start_split_done: bool,
     }
 
     impl Scenario {
@@ -983,22 +1255,47 @@ mod tests {
                 triggers: SplitsTriggers::new(),
                 state: RunState::default(),
                 prev: TimerState::Running,
+                last_area: None,
+                start_split_done: false,
             }
         }
         fn line(&mut self, line: &str) -> Vec<Call> {
-            handle_line(line, &self.settings, &self.triggers, &mut self.state);
+            if let Some(area) =
+                handle_line(line, &self.settings, &self.triggers, &mut self.state)
+            {
+                self.last_area = Some(area);
+            }
             test_harness::take_calls()
         }
         fn area(&mut self, id: &str) -> Vec<Call> {
             self.line(&area_line(id))
         }
         fn tick(&mut self) -> Vec<Call> {
-            on_timer_tick(&mut self.prev, &mut self.state);
+            on_timer_tick(
+                &self.settings,
+                &self.triggers,
+                &mut self.prev,
+                &mut self.state,
+                &mut self.last_area,
+                &mut self.start_split_done,
+            );
             test_harness::take_calls()
         }
         /// Scripts what `timer::state()` reports to the next tick/line.
         fn script(&mut self, state: TimerState) {
             test_harness::set_timer_state(state);
+        }
+        /// Attaches with the timer idle: the prev tick observed NotRunning.
+        fn idle(&mut self) {
+            self.script(TimerState::NotRunning);
+            self.tick();
+        }
+        /// The NotRunning -> Running transition a run start produces, plus the
+        /// tick that observes it - the fresh start the Entry hook reacts to.
+        fn start_run(&mut self) -> Vec<Call> {
+            self.prev = TimerState::NotRunning;
+            test_harness::set_timer_state(TimerState::Running);
+            self.tick()
         }
     }
 
@@ -1123,5 +1420,315 @@ mod tests {
             }
         }
         assert_eq!(out, include_str!("../testdata/real-run.golden"));
+    }
+
+    // ---- T2: Entry mode ---------------------------------------------------
+
+    fn settings_entry() -> Settings {
+        let mut s = settings_full();
+        s.split_attribution = SplitAttribution::Entry;
+        s
+    }
+
+    /// Appends `label` plus any timer calls it triggered (lowercased), so an
+    /// assertion reads as an interleaved table of entries and splits.
+    fn record(trace: &mut Vec<String>, label: &str, calls: Vec<Call>) {
+        trace.push(label.to_string());
+        trace.extend(calls.iter().map(|c| format!("{c:?}").to_lowercase()));
+    }
+
+    /// Builds a trigger set from segment names exactly like `reparse()` does.
+    fn triggers_from_names(names: &[&str]) -> SplitsTriggers {
+        let mut triggers = SplitsTriggers::new();
+        for name in names {
+            if let Some(area) = AREAS.iter().find(|a| a.name == *name) {
+                triggers.ids.insert(area.id.to_string());
+                triggers.order.push(area.id.to_string());
+            }
+        }
+        triggers
+    }
+
+    /// The plan's "Act1-only shape": any% segments 1..13 (The Riverbank ->
+    /// The Manor Ramparts, Campaign-AnyPercent.lss verbatim) plus Vastiri
+    /// Outskirts as the finish - 14 segments ending at the act boundary.
+    fn act1_only_triggers() -> SplitsTriggers {
+        let doc = include_str!("../../splits/Campaign-AnyPercent.lss");
+        let names = extract_segment_names(doc);
+        let mut picked: Vec<&str> = names.iter().take(13).map(|s| s.as_str()).collect();
+        picked.push("Vastiri Outskirts");
+        triggers_from_names(&picked)
+    }
+
+    #[test]
+    fn entry_table_attribution_shifts_by_one_zone() {
+        // Entry: the hook spends segment 1 at ~0, then each entry completes
+        // the segment named by that entry (time since the previous entry).
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle();
+        let mut trace = Vec::new();
+        record(&mut trace, "run start", sc.start_run());
+        record(&mut trace, "enter G1_1", sc.area("G1_1"));
+        record(&mut trace, "enter G1_town", sc.area("G1_town"));
+        record(&mut trace, "enter G1_2", sc.area("G1_2"));
+        assert_eq!(
+            trace,
+            [
+                "run start", "split",     // segment 1 (Riverbank) = 0:00
+                "enter G1_1",             // start area: never splits (D3)
+                "enter G1_town", "split", // segment 2 receives Riverbank time
+                "enter G1_2", "split",    // segment 3 receives town time
+            ]
+        );
+
+        // Exit, same path: splits lag one zone behind.
+        let mut sc = Scenario::new(settings_full());
+        sc.idle();
+        let mut trace = Vec::new();
+        record(&mut trace, "run start", sc.start_run());
+        record(&mut trace, "enter G1_1", sc.area("G1_1"));
+        record(&mut trace, "enter G1_town", sc.area("G1_town"));
+        record(&mut trace, "enter G1_2", sc.area("G1_2"));
+        assert_eq!(
+            trace,
+            [
+                "run start", // no hook in Exit
+                "enter G1_1",
+                "enter G1_town", "split", // segment 1 completes on leaving it
+                "enter G1_2", "split",
+            ]
+        );
+    }
+
+    #[test]
+    fn entry_finish_normal_split_only_no_extra() {
+        let mut sc = Scenario::new(settings_entry()); // attached, Running
+        assert_eq!(sc.area("G_Endgame_Town"), vec![Call::Split]); // ONE split
+        assert!(sc.area("G_Endgame_Town").is_empty()); // no Exit-style extra
+    }
+
+    #[test]
+    fn entry_full_campaign_walk_same_count_as_exit() {
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle();
+        let mut calls = sc.start_run(); // hook: segment 1
+        for area in AREAS {
+            calls.extend(sc.area(area.id));
+        }
+        // hook + 95 non-start entries = 96 = Exit's count (its extra finish
+        // split replaced by the hook): N segments -> N auto splits.
+        assert_eq!(calls, vec![Call::Split; 96]);
+    }
+
+    #[test]
+    fn entry_act1_only_14_splits_ends_at_vastiri() {
+        let mut s = settings_entry();
+        s.split_mode = SplitMode::Custom;
+        let mut sc = Scenario::new(s);
+        sc.triggers = act1_only_triggers();
+        assert_eq!(sc.triggers.order.len(), 14);
+
+        sc.idle();
+        let mut trace = Vec::new();
+        record(&mut trace, "run start", sc.start_run());
+        let order = sc.triggers.order.clone();
+        for id in &order {
+            record(&mut trace, &format!("enter {id}"), sc.area(id));
+        }
+        let splits = trace.iter().filter(|e| e.as_str() == "split").count();
+        assert_eq!(splits, 14); // hook + 12 mid zones + the finish entry
+        let tail: Vec<&str> = trace[trace.len() - 2..].iter().map(String::as_str).collect();
+        assert_eq!(tail, ["enter G2_1", "split"]); // run ends at Vastiri
+        assert!(sc.area("G2_1").is_empty()); // Entry: no finish extra anywhere
+    }
+
+    #[test]
+    fn entry_run_boundary_finish_splits_in_next_run() {
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle();
+        assert_eq!(sc.start_run(), vec![Call::Split]); // run 1 hook
+        assert_eq!(sc.area("G_Endgame_Town"), vec![Call::Split]); // run 1 finish
+
+        sc.script(TimerState::Ended);
+        assert!(sc.tick().is_empty()); // Ended: locals cleared, no split
+        sc.script(TimerState::NotRunning);
+        assert!(sc.tick().is_empty()); // fresh_reset: run state cleared
+
+        // New run starts with no zone in between...
+        assert_eq!(sc.start_run(), vec![Call::Split]);
+        // ...so the previous run's finish is not marked encountered and
+        // entering it later still splits.
+        assert_eq!(sc.area("G_Endgame_Town"), vec![Call::Split]);
+    }
+
+    #[test]
+    fn entry_two_consecutive_runs_identical() {
+        fn walk(sc: &mut Scenario) -> Vec<Call> {
+            let mut calls = sc.start_run();
+            for id in ["G1_1", "G1_town", "G1_2", "G_Endgame_Town"] {
+                calls.extend(sc.area(id));
+            }
+            calls
+        }
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle();
+        let run1 = walk(&mut sc);
+        sc.script(TimerState::Ended);
+        sc.tick();
+        sc.script(TimerState::NotRunning);
+        sc.tick();
+        let run2 = walk(&mut sc);
+        assert_eq!(run1, run2);
+        assert_eq!(run1, vec![Call::Split; 4]); // hook + town + Clearfell + finish
+    }
+
+    #[test]
+    fn entry_pause_reload_resume_single_segment1_split() {
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle();
+        let mut all = sc.start_run(); // THE segment-1 split
+        all.extend(sc.area("G1_town")); // progressed: split 2
+
+        sc.script(TimerState::Paused);
+        assert!(sc.tick().is_empty()); // pause observed: nothing
+        assert!(sc.area("G1_town").is_empty()); // die + reload: guarded
+        assert!(sc.area("G1_1").is_empty()); // respawn at start: no split
+
+        sc.script(TimerState::Running);
+        assert!(sc.tick().is_empty()); // resume (prev=Paused): no hook
+        assert!(sc.area("G1_town").is_empty()); // reload again: still guarded
+
+        assert_eq!(all, vec![Call::Split; 2]); // exactly one segment-1 split
+    }
+
+    #[test]
+    fn entry_manual_start_stands_in_zone_guard_reload() {
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle();
+        assert!(sc.area("G1_town").is_empty()); // idle entry: timer not running
+        // fresh start: state.clear() wipes the guard, but last_area survives
+        // the boundary -> the hook re-guards as it splits.
+        assert_eq!(sc.start_run(), vec![Call::Split]);
+        assert!(sc.area("G1_town").is_empty()); // reload: no phantom
+    }
+
+    #[test]
+    fn entry_reset_start_reload_phantom_documented() {
+        // Qualified: the hook only re-guards when last_area was populated
+        // before the start (previous test). A mid-run reset clears it at the
+        // boundary, so reset -> start -> reload-same-zone phantom-splits -
+        // documented parity with today's Exit mode, accepted, not a regression.
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle();
+        sc.start_run();
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]); // standing there
+        sc.script(TimerState::NotRunning);
+        assert!(sc.tick().is_empty()); // reset clears everything
+        assert_eq!(sc.start_run(), vec![Call::Split]); // last_area is None now
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]); // PHANTOM
+
+        // The same phantom exists in Exit mode today:
+        let mut ex = Scenario::new(settings_full());
+        ex.idle();
+        ex.area("G1_town");
+        ex.script(TimerState::NotRunning);
+        ex.tick();
+        ex.script(TimerState::Running);
+        ex.tick(); // fresh start (Exit: no hook, state cleared)
+        assert_eq!(ex.area("G1_town"), vec![Call::Split]); // identical phantom
+    }
+
+    #[test]
+    fn entry_char_select_start_loading_lands_on_segment2() {
+        let mut sc = Scenario::new(settings_entry());
+        sc.idle(); // char select: last_area is None
+        let mut calls = sc.start_run(); // hook splits, nothing to re-guard
+        assert!(sc.last_area.is_none());
+        calls.extend(sc.area("G1_1")); // load into the start zone: no split
+        assert_eq!(calls, vec![Call::Split]); // still just segment 1
+        calls.extend(sc.area("G1_town")); // segment 2 completes (incl. loading)
+        assert_eq!(calls, vec![Call::Split; 2]);
+    }
+
+    #[test]
+    fn entry_hook_level_mode_never_splits() {
+        let mut s = settings_entry();
+        s.split_mode = SplitMode::Level;
+        let mut sc = Scenario::new(s);
+        sc.idle();
+        assert!(sc.start_run().is_empty()); // no hook in Level mode (D6)
+        assert_eq!(sc.line(&level_line(2)), vec![Call::Split]); // levels work
+    }
+
+    #[test]
+    fn entry_hook_anypercent_optional_zone_never_splits() {
+        let mut s = settings_entry();
+        s.split_mode = SplitMode::AnyPercent;
+        let mut sc = Scenario::new(s);
+        sc.idle();
+        assert!(sc.area("G1_3").is_empty()); // stand in Mud Burrow (optional)
+        assert!(sc.start_run().is_empty()); // hook filtered out
+        assert_eq!(sc.area("G1_4"), vec![Call::Split]); // progression splits
+    }
+
+    #[test]
+    fn entry_hook_custom_absent_zone_never_splits() {
+        let mut s = settings_entry();
+        s.split_mode = SplitMode::Custom;
+        let mut sc = Scenario::new(s);
+        sc.triggers = triggers_from_names(&["Clearfell Encampment"]);
+        sc.idle();
+        assert!(sc.area("G1_2").is_empty()); // stand in a zone the file lacks
+        assert!(sc.start_run().is_empty()); // hook filtered out
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]); // in-file splits
+    }
+
+    #[test]
+    fn entry_auto_split_off_at_start_no_late_hook() {
+        let mut sc = Scenario::new(settings_entry());
+        sc.settings.auto_split = false;
+        sc.idle();
+        assert!(sc.start_run().is_empty()); // gated at the fresh start
+        sc.settings.auto_split = true; // enabled afterwards...
+        sc.script(TimerState::Unknown);
+        assert!(sc.tick().is_empty()); // ...an Unknown gap...
+        sc.script(TimerState::Running);
+        assert!(sc.tick().is_empty()); // ...cannot fire it late
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]); // Exit-aligned run
+    }
+
+    #[test]
+    fn entry_auto_start_fires_exactly_one_segment1_split() {
+        let mut s = settings_entry();
+        s.auto_start = true;
+        let mut sc = Scenario::new(s);
+        sc.idle(); // idle at the start area
+        assert_eq!(sc.area("G1_1"), vec![Call::Start]); // auto start flips Running
+        assert_eq!(sc.tick(), vec![Call::Split]); // next tick: fresh start hook
+        assert!(sc.area("G1_1").is_empty()); // reload: no split
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]); // segment 2
+    }
+
+    #[test]
+    fn entry_attach_while_running_never_fires_the_hook() {
+        let mut sc = Scenario::new(settings_entry()); // prev = Running: no fresh start
+        assert!(sc.tick().is_empty());
+        // First split is a plain normal split = Exit alignment for this run.
+        assert_eq!(sc.area("G1_town"), vec![Call::Split]);
+        assert!(sc.tick().is_empty());
+    }
+
+    #[test]
+    fn split_attribution_registers_exit_as_default() {
+        // D4: the derive registers the new key exactly like split_mode, so
+        // existing .lss files (which lack it) keep loading as Exit.
+        let registered = Settings::register();
+        // (plain == : SplitAttribution derives exactly what SplitMode does, no Debug)
+        assert!(registered.split_attribution == SplitAttribution::Exit);
+        let events = test_harness::take_setting_events();
+        assert!(events.iter().any(|e| e == "choice:split_attribution:Exit"));
+        assert!(events.iter().any(|e| e == "option:split_attribution:Exit"));
+        assert!(events.iter().any(|e| e == "option:split_attribution:Entry"));
+        assert!(events.iter().any(|e| e == "choice:split_mode:Full")); // untouched
     }
 }
