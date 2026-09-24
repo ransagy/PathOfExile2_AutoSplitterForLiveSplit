@@ -1731,4 +1731,84 @@ mod tests {
         assert!(events.iter().any(|e| e == "option:split_attribution:Entry"));
         assert!(events.iter().any(|e| e == "choice:split_mode:Full")); // untouched
     }
+
+    // ---- T4b: the quarry ---------------------------------------------------
+    // A local tool, not a regression net: #[ignore]d, zero stored state, zero
+    // bytes added; reads POE2_CLIENT_LOG read-only. Self-computing invariants
+    // (no snapshot), so it never churns as the log grows. Run at exactly three
+    // moments: (a) once per feature change touching parse_line/the area table
+    // or fixture curation; (b) after a game patch changes line shapes; (c)
+    // before shipping any parse_line/AREAS change.
+
+    /// Independent area-id oracle: the text between the line's quotes via
+    /// plain splitting - deliberately not `extract_area_id` (find/rfind), so
+    /// the two derivations can disagree and this test can catch it.
+    fn quarry_quote_id(line: &str) -> Option<&str> {
+        let parts: Vec<&str> = line.split('"').collect();
+        match parts.len() {
+            3 => Some(parts[1]),
+            _ => None,
+        }
+    }
+
+    #[test]
+    #[ignore] // needs this machine's Client.txt via POE2_CLIENT_LOG
+    fn quarry_full_log_invariants() {
+        let path = std::env::var("POE2_CLIENT_LOG").unwrap_or_else(|_| {
+            panic!(
+                "quarry needs POE2_CLIENT_LOG=/path/to/Client.txt \
+                 (the log is read-only: never committed, never modified)"
+            )
+        });
+        let bytes = std::fs::read(&path).expect("cannot read Client.txt");
+        let log = String::from_utf8_lossy(&bytes);
+
+        let mut sc = Scenario::new(settings_full()); // constant Running, no ticks
+        let mut tracked: HashSet<&str> = HashSet::new();
+        let mut finish_entries = 0usize;
+        let mut start_seen = false;
+        let mut splits = 0usize;
+
+        for line in log.lines() {
+            if line.contains("Generating level ") {
+                // Invariant 1/3: every marker line parses to an Area whose id
+                // equals the independently re-derived quoted text.
+                let Some(oracle) = quarry_quote_id(line) else {
+                    panic!("malformed quote structure: {line}");
+                };
+                match parse_line(line) {
+                    Event::Area(parsed) if parsed == oracle => {}
+                    Event::Area(other) => {
+                        panic!("id mismatch: quoted {oracle}, parsed {other}: {line}")
+                    }
+                    other => panic!("marker line not an Area ({other:?}): {line}"),
+                }
+                if oracle == END_AREA_ID {
+                    finish_entries += 1;
+                }
+                if AREAS.iter().any(|a| a.id == oracle) {
+                    start_seen |= oracle == START_AREA_ID;
+                    tracked.insert(oracle);
+                }
+            }
+            splits += sc
+                .line(line)
+                .iter()
+                .filter(|c| matches!(c, Call::Split))
+                .count();
+        }
+
+        // Invariant 2: Exit default; no run boundaries in the replay, so the
+        // encountered gate never resets - one split per tracked zone's first
+        // entry, minus the start area (never splits on entry), plus one
+        // ungated extra per finish-zone entry (the finish block has no
+        // encountered gate, so every G_Endgame_Town load splits again).
+        let predicted = tracked.len() - usize::from(start_seen) + finish_entries;
+        assert_eq!(
+            splits, predicted,
+            "replay split count {splits} != independent scan {predicted} \
+             ({} tracked ids, start area seen: {start_seen}, finish entries: {finish_entries})",
+            tracked.len()
+        );
+    }
 }
