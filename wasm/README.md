@@ -78,6 +78,7 @@ Right-click → **Edit Auto Splitter Settings**:
 | Client.txt | Path of Exile 2's client log (see below) |
 | Splits file | Your `.lss` - used as the trigger set in **Custom** mode |
 | Split mode | `Campaign (100%)`, `Campaign (Any%)`, `Level`, or `Custom (from splits file)` |
+| Split attribution | `Exit` (default, original) or `Entry` - which zone each segment's time is attributed to |
 | Enable auto splitting | master switch for start/split behaviour |
 | Auto start new character runs | start automatically when entering The Riverbank |
 | Verbose debug logging | per-tick trace lines in `log.txt` (off = quiet; meaningful events always log) |
@@ -93,6 +94,41 @@ Pick the split mode that matches your splits file:
   want; the splitter notices changes on its own. The run ends when you enter
   the **last segment** of the file, so put your finish-line zone there.
 
+#### Which zone gets the time: Exit vs Entry
+
+**Exit** (default) completes a segment when you *leave* its zone - each row
+receives the time spent in the zone you just left, matching the original C#
+component. **Entry** shifts the attribution one zone earlier: the run start
+itself completes the first row, and entering a zone completes *that zone's*
+row, so each segment receives the time since you entered it. Same splits, same
+count - only where the time lands moves:
+
+| Segment | Exit | Entry |
+|---|---|---|
+| The Riverbank | 1:55 | 0:00 |
+| Clearfell Encampment | 0:35 | 1:55 |
+| Clearfell | 3:00 | 0:35 |
+| The Grelwood | (next zone) | 3:00 |
+
+Worth knowing:
+
+- **Entry is opt-in per splits file** - like every other setting it is stored
+  in the `.lss`; files saved before this setting existed keep loading as
+  `Exit`.
+- The run still auto-ends at the same zone load in both modes. Entry only
+  drops the finish line's extra split: the finish entry itself completes the
+  last row (so no more two identical times at the end).
+- Starting at **character select** (no zone known yet) completes row 1
+  immediately; the loading time lands on row 2.
+- If the splitter **attaches while a run is already in progress**, no run
+  start is observed - that attempt behaves as `Exit`, nothing breaks. The
+  same applies to attaching while standing in a zone the log has not
+  announced yet: a death-reload before your first progression can split
+  spuriously (pre-existing attach gap, both modes).
+- If you skip a zone entirely, row labels desync from their names while the
+  total stays correct - pre-existing limitation, both modes; keep custom
+  segment order identical to your planned first-entry order.
+
 #### How triggering works
 
 - A split fires on the **first entry** of each tracked area per attempt.
@@ -103,9 +139,10 @@ Pick the split mode that matches your splits file:
   labels, keep Custom-mode segment order identical to your planned
   first-entry order. Freeform label rows (e.g. `Act 1 Boss`) are passed over
   without consuming anything.
-- Entering the finish line fires a double-split: the previous row *and* the
-  finish row get stamped at the same instant — seeing the last two segments
-  with identical times is expected.
+- Entering the finish line fires a double-split (Exit attribution): the
+  previous row *and* the finish row get stamped at the same instant — seeing
+  the last two segments with identical times is expected. Under Entry only
+  the first of the two fires (see above).
 - The Riverbank (run start) never consumes a segment, whether you use auto
   start or start manually.
 
@@ -220,6 +257,9 @@ Known quirks:
 - **Finisher**: campaign modes auto-end when The Ziggurat Refuge loads;
   Custom mode ends at the file's last segment; racers who stop after the
   final boss finish with one manual split.
+- **Split attribution (Exit vs Entry)**: the `Split attribution` setting is
+  WASM-only - the C# component always attributes a segment to the zone you
+  left (`Exit`).
 - Everything else matches upstream semantics: same Client.txt tailing, same
   first-entry splits, same known limits (no load-time removal yet).
 
@@ -233,6 +273,20 @@ cargo build --release --target wasm32-wasip1
 
 The committed `poe2_autosplitter.wasm` is refreshed manually whenever the
 source changes (same approach as upstream committing its built DLL).
+
+### Testing
+
+- `cargo test` is the default suite: unit tests, characterization goldens
+  (recorded against pre-change behaviour), the full Exit/Entry mode matrix,
+  and a replay of a committed real session (`wasm/testdata/`, ~40 KB). It
+  runs everywhere with no environment variables.
+- `POE2_CLIENT_LOG=/path/to/Client.txt cargo test --release quarry -- --ignored`
+  runs the *quarry*: it replays your full local `Client.txt` (read-only -
+  never committed, never modified) and checks parser and split-count
+  invariants against an independent scan, with no stored goldens. Run it
+  when fixture curation or parsing logic changes, after a game patch that
+  adds zones or changes line shapes, and before shipping any change to
+  `parse_line` or the area table; it is `#[ignore]`d otherwise.
 
 ## Credits & license
 
