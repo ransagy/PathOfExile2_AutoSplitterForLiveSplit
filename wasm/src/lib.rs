@@ -699,9 +699,122 @@ fn handle_line(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Test harness: recording stubs for asr's host-inaccessible externs
+// ---------------------------------------------------------------------------
+
+/// Stubs for the `extern "C"` symbols asr imports from the LiveSplit host
+/// (`asr/src/runtime/sys.rs`). On wasm they resolve to the runtime; a host
+/// `cargo test` link would fail without them, so they live here, test-only.
+///
+/// Two rules (they make assertions count what LiveSplit actually does):
+/// - `timer_split` records only while the timer reads `Running`: LiveSplit's
+///   `Timer::split()` errors with `NoRunInProgress` without an active attempt
+///   (livesplit-core `timing/timer/mod.rs:309`) and the host drops the error
+///   (`auto_splitting/mod.rs:826`). Idle/ended splits must not be counted.
+/// - everything is thread-local: libtest runs each test on its own thread, so
+///   parallel tests cannot interleave recordings (a shared `static` would).
+#[cfg(test)]
+mod test_harness {
+    use asr::timer::TimerState;
+    use std::cell::{Cell, RefCell};
+
+    /// A host call the splitter made into the timer API.
+    #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+    pub enum Call {
+        Start,
+        Split,
+    }
+
+    thread_local! {
+        static TIMER_STATE: Cell<u32> = Cell::new(0); // 0 = NotRunning
+        static CALLS: RefCell<Vec<Call>> = RefCell::new(Vec::new());
+    }
+
+    /// `sys::TimerState` is `#[repr(transparent)] u32` with NOT_RUNNING = 0,
+    /// RUNNING = 1, PAUSED = 2, ENDED = 3; any other raw value reads back as
+    /// `Unknown` in `asr::timer::state()`.
+    fn raw(state: TimerState) -> u32 {
+        match state {
+            TimerState::NotRunning => 0,
+            TimerState::Running => 1,
+            TimerState::Paused => 2,
+            TimerState::Ended => 3,
+            _ => 4,
+        }
+    }
+
+    /// Scripts what `timer::state()` will report to the code under test.
+    pub fn set_timer_state(state: TimerState) {
+        TIMER_STATE.with(|s| s.set(raw(state)));
+    }
+
+    /// Returns every timer call recorded so far, clearing the log.
+    pub fn take_calls() -> Vec<Call> {
+        CALLS.with(|c| c.borrow_mut().drain(..).collect())
+    }
+
+    fn record(call: Call) {
+        CALLS.with(|c| c.borrow_mut().push(call));
+    }
+
+    #[no_mangle]
+    pub extern "C" fn timer_get_state() -> u32 {
+        TIMER_STATE.with(Cell::get)
+    }
+
+    #[no_mangle]
+    pub extern "C" fn timer_start() {
+        record(Call::Start);
+        TIMER_STATE.with(|s| s.set(raw(TimerState::Running)));
+    }
+
+    #[no_mangle]
+    pub extern "C" fn timer_split() {
+        if TIMER_STATE.with(Cell::get) == 1 {
+            record(Call::Split);
+        }
+    }
+
+    #[no_mangle]
+    pub extern "C" fn runtime_print_message(_text_ptr: *const u8, _text_len: usize) {}
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- T0 throwaway: handle_line links against the stubs ---------------
+
+    #[test]
+    fn throwaway_handle_line_links() {
+        use test_harness::{set_timer_state, take_calls, Call};
+
+        let settings = Settings {
+            _general: Title,
+            client_log: FileSelect {
+                path: String::new(),
+            },
+            splits_file: FileSelect {
+                path: String::new(),
+            },
+            split_mode: SplitMode::Full,
+            auto_split: true,
+            auto_start: false,
+            debug_log: false,
+        };
+        let triggers = SplitsTriggers::new();
+        let mut state = RunState::default();
+        set_timer_state(TimerState::Running);
+
+        handle_line(
+            "2025/10/11 15:08:00 123 abcd [INFO Client 42] Generating level 3 area \"G1_13_2\" with seed 7",
+            &settings,
+            &triggers,
+            &mut state,
+        );
+        assert_eq!(take_calls(), vec![Call::Split]);
+    }
 
     // ---- xml_unescape ----------------------------------------------------
 
