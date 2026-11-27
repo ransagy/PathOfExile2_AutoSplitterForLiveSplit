@@ -115,6 +115,10 @@ Worth knowing:
 - **Entry is opt-in per splits file** - like every other setting it is stored
   in the `.lss`; files saved before this setting existed keep loading as
   `Exit`.
+- Switching attribution changes *every* segment's duration, so keep a
+  **separate splits file per mode** (or clear the segment history). PBs and
+  best segments recorded under one mode will make the other mode's deltas and
+  "best segment" highlights misleading.
 - The run still auto-ends at the same zone load in both modes. Entry only
   drops the finish line's extra split: the finish entry itself completes the
   last row (so no more two identical times at the end).
